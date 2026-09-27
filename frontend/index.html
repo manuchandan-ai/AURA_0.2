@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AURA // Neural Core OS</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js CDN for 3D Singularity WebGL -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- Interactive 3D WebGL Canvas Layer -->
+  <div id="webgl-canvas-container"></div>
+
+  <!-- Glassmorphic Dashboard Layout -->
+  <div class="app-layout">
+    <nav class="sidebar">
+      <div class="brand">⚛️ AURA CORE</div>
+      <div class="nav-links">
+        <button class="nav-item active" data-view="dashboard">Home Terminal</button>
+        <button class="nav-item" data-view="chat">Reasoning Console</button>
+        <button class="nav-item" data-view="goals">Strategic Roadmaps</button>
+        <button class="nav-item" data-view="artifacts">Artifact Vault</button>
+      </div>
+      <div class="operator-profile">
+        <span id="user-badge">Operator: Guest</span>
+      </div>
+    </nav>
+
+    <main class="content-surface" id="view-container">
+      <!-- Dynamic Views Inject Here -->
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

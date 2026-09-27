@@ -1,0 +1,32 @@
+# Database Schema Specification — AURA (SQLite)
+
+### Table: `users`
+* `id`: Integer, Primary Key, Auto-increment
+* `username`: String(50), Unique, Indexed
+* `password_hash`: String(256), Not Null
+* `salt`: String(64), Not Null
+* `role`: String(20), Default 'operator' ('admin' | 'operator')
+* `freeze_tokens`: Integer, Default 2
+* `created_at`: DateTime, UTC
+
+### Table: `goals`
+* `id`: Integer, Primary Key
+* `user_id`: Integer, Foreign Key (`users.id`)
+* `intention`: String, Not Null
+* `timeline`: String
+* `streak_count`: Integer, Default 0
+* `saved_streak_count`: Integer, Default 0
+* `streak_frozen`: Boolean, Default False
+* `in_recovery`: Boolean, Default False
+* `recovery_task`: Text, Nullable
+* `last_check_in_date`: Date, Nullable
+* `progress_percentage`: Integer, Default 0
+
+### Table: `artifacts`
+* `id`: Integer, Primary Key
+* `user_id`: Integer, Foreign Key (`users.id`)
+* `filename`: String, Not Null
+* `file_path`: String, Not Null
+* `file_size_bytes`: Integer
+* `analysis_summary`: Text
+* `created_at`: DateTime, UTC
