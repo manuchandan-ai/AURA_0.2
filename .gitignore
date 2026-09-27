@@ -1,10 +1,10 @@
-.env
+﻿.env
 *.db
-*.db.bak
+*.sqlite
+*.wav
+artifacts_storage/
 __pycache__/
 *.pyc
 venv/
 .venv/
-artifacts_storage/
 *.log
-*.sqlite
