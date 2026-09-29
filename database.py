@@ -1,15 +1,12 @@
-import os
-from datetime import datetime
+﻿import os
+from datetime import datetime, date
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, Date, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 DATABASE_URL = "sqlite:///./aura.db"
-
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-
-# In D:\aura\database.py, update User and add AppealRequest:
 
 class User(Base):
     __tablename__ = "users"
@@ -38,18 +35,6 @@ class User(Base):
     artifacts = relationship("Artifact", back_populates="user", cascade="all, delete-orphan")
     appeals = relationship("AppealRequest", back_populates="user", cascade="all, delete-orphan")
 
-class AppealRequest(Base):
-    __tablename__ = "appeal_requests"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    appeal_type = Column(String(50), default="unban")  # "unban" or "info"
-    message = Column(Text, nullable=False)
-    admin_response = Column(Text, nullable=True)
-    status = Column(String(20), default="pending")     # "pending", "resolved", "dismissed"
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    user = relationship("User", back_populates="appeals")
-    
 class Goal(Base):
     __tablename__ = "goals"
     id = Column(Integer, primary_key=True, index=True)
@@ -119,5 +104,17 @@ class Artifact(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="artifacts")
+
+class AppealRequest(Base):
+    __tablename__ = "appeal_requests"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    appeal_type = Column(String(50), default="unban")  # "unban" or "info"
+    message = Column(Text, nullable=False)
+    admin_response = Column(Text, nullable=True)
+    status = Column(String(20), default="pending")     # "pending", "resolved", "dismissed"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="appeals")
 
 Base.metadata.create_all(bind=engine)

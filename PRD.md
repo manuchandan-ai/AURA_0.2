@@ -1,18 +1,28 @@
 # Product Requirements Document (PRD) — AURA
 **Product Name:** AURA (Adaptive Unified Reasoning Assistant)  
+**Version:** 2.0 (Hardened Governance & Universal Access)  
 **Status:** In Production  
-**Target Users:** Software engineers, technical founders, and operators.
+**Target Audience:** Universal — Students, professionals, fitness enthusiasts, founders, creators, and general operators.
+
+---
 
 ## 1. Problem Statement
-Knowledge workers manage fractured workflows across LLM chat windows, static task lists, and code documents. Context is continuously lost between conversations, goal check-ins decay, and external LLMs suffer from API rate limits.
+Everyday individuals and knowledge workers struggle with fragmented digital workflows across disconnected AI chats, static habit checklists, and scattered personal notes. Context is erased after every conversation, habits collapse due to rigid streak punishment, and external cloud AI tools suffer from rate limits and vendor lock-in. Furthermore, shared productivity apps lack enterprise-grade user lifecycle governance and tamper-resistant authentication.
 
 ## 2. Core Value Propositions
-* **Context Continuity:** Background cognitive extractors retain constraints and preferences across sessions.
-* **Resilient Reasoning:** Primary cloud execution via Groq (`gpt-oss-120b`) with zero-downtime failover to local Ollama (`llama3.2`).
-* **Momentum Defense:** Strategic roadmaps with automated Streak Freeze shields and recovery challenges.
-* **Grounded Ingestion:** Vector RAG search across user artifacts using local `nomic-embed-text`.
+* **Universal Domain Intelligence:** Multi-faceted assistance spanning Academic Learning, Fitness & Health, Career Growth, Personal Finance, and Software Engineering.
+* **Cognitive Continuity & Memory:** Background cognitive extraction retains user preferences, personal constraints, and ongoing routines across sessions.
+* **Resilient Momentum Engine:** Strategic roadmaps with automated daily routines, Streak Freeze shields, and a 24-hour Recovery Protocol to prevent abandonment.
+* **Multi-Input Grounded Reasoning:** Ingest documents, study notes, images, and spreadsheets for localized vector retrieval (RAG) using local embeddings.
+* **Enterprise Security & Governance:** Cryptographic PBKDF2 per-user salted authentication, signed JWT Bearer access control, and complete administrator lifecycle moderation (Approvals, Suspensions, Appeals).
 
-## 3. Success Metrics
-* Authentication token verification on 100% of non-public endpoints.
-* Zero-latency failover execution during external cloud API downtime.
-* Data isolation across multi-tenant operator accounts.
+## 3. User Personas
+1. **The Academic / Student:** Breaks down complex subjects via the Feynman technique, parses lecture slides, and tracks study milestones.
+2. **The Health & Fitness Operator:** Designs workout splits, maintains training streaks with freeze shield protection, and receives morning voice briefings.
+3. **The Professional & Freelancer:** Ingests contracts, drafts salary negotiation scripts, and tracks multi-phase client deliverables.
+4. **The System Administrator:** Audits operator activity, approves new registrations, mitigates suspicious access, and reviews ban appeals.
+
+## 4. Key Performance Indicators (KPIs)
+* **Auth Integrity:** 100% of non-public endpoints guarded by verified JWT Bearer tokens.
+* **Failover Uptime:** Zero-latency switch from cloud to local Ollama fallback upon API exhaustion.
+* **Retention:** Measurable reduction in user abandonment via Streak Freeze shields and recovery challenges.

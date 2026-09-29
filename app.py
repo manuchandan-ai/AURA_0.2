@@ -1,9 +1,8 @@
-import os
+﻿import os
 import json
 from datetime import datetime, date
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title="AURA // Autonomous Neural Core", page_icon="⚛️", layout="wide")
 
@@ -54,14 +53,17 @@ if not st.session_state.token:
                 uname = st.text_input("Username")
                 pwd = st.text_input("Password", type="password")
                 if st.form_submit_button("Authenticate Operator ➔", use_container_width=True):
-                    res = requests.post(f"{API_URL}/auth/login", json={"username": uname, "password": pwd})
-                    if res.status_code == 200:
-                        data = res.json()
-                        st.session_state.token = data["access_token"]
-                        st.session_state.current_user = data
-                        st.rerun()
-                    else:
-                        st.error(res.json().get("detail", "Authentication rejected."))
+                    try:
+                        res = requests.post(f"{API_URL}/auth/login", json={"username": uname.strip(), "password": pwd.strip()})
+                        if res.status_code == 200:
+                            data = res.json()
+                            st.session_state.token = data["access_token"]
+                            st.session_state.current_user = data
+                            st.rerun()
+                        else:
+                            st.error(res.json().get("detail", "Authentication rejected."))
+                    except Exception as e:
+                        st.error(f"Cannot reach server: {e}")
 
         with tab_register:
             with st.form("reg_form", clear_on_submit=True):
@@ -144,15 +146,6 @@ if st.session_state.nav_selection == "Home Dashboard":
         st.session_state.chat_msgs.append({"role": "user", "content": q_search})
         st.session_state.nav_selection = "Assistant Chat"
         st.rerun()
-
-    # 3D Cosmic Hub
-    cosmic_html = """
-    <div style="text-align:center; padding:15px; background:radial-gradient(circle, #2e1065 0%, #070312 75%); border-radius:14px; border:1px solid #7c3aed;">
-        <h3 style="color:#c084fc; margin:0;">Singularity Core Active</h3>
-        <p style="color:#94a3b8; font-size:0.85rem;">Radial Cognitive Hub — Select Module Below</p>
-    </div>
-    """
-    components.html(cosmic_html, height=100)
 
     # Persona Quick-Toggles
     c_m = st.columns(6)
@@ -254,7 +247,7 @@ elif st.session_state.nav_selection == "Memory Vault":
     st.markdown("### 🧠 Cognitive Knowledge Vault")
     st.info("Extracted constraints, traits, and facts are injected into system prompts during reasoning.")
 
-# ----------------- VIEW 8: ADMIN CONSOLE (APPROVALS & BANS) -----------------
+# ----------------- VIEW 8: ADMIN CONSOLE -----------------
 elif st.session_state.nav_selection == "Admin Console":
     st.markdown("### 🛡️ Administrative Governance & Operator Desk")
     tab_pend, tab_all, tab_app = st.tabs(["⏳ Pending Approvals", "👥 Operator Directory & Bans", "📬 Banned Appeals"])
@@ -279,7 +272,7 @@ elif st.session_state.nav_selection == "Admin Console":
         for op in users:
             col_info, col_ban = st.columns([3, 1])
             with col_info:
-                st.write(f"**{op['username']}** | Role: `{op['role']}` | Shields: {op['freeze_tokens']}")
+                st.write(f"**{op['username']}** | Role: `{op['role']}` | Status: `{op.get('status', 'active')}` | Shields: {op['freeze_tokens']}")
             with col_ban:
                 if op["role"] != "admin":
                     if st.button("🚫 Ban Operator", key=f"ban_{op['id']}"):
