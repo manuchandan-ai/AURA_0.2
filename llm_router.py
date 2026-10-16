@@ -16,33 +16,33 @@ if not GROQ_API_KEY:
     logger.warning("GROQ_API_KEY is not set in .env — Groq engine will be unavailable, falling back to Ollama only.")
 
 groq_client = None
-ACTIVE_GROQ_MODEL = None
+ACTIVE_GROQ_MODEL = "openai/gpt-oss-120b"
+_groq_initialized = False
 
-if GROQ_API_KEY.startswith("gsk_"):
-    try:
-        groq_client = Groq(api_key=GROQ_API_KEY, timeout=12.0)
-        models_data = groq_client.models.list()
-        available_ids = [m.id for m in models_data.data]
-        logger.info(f"Available Groq models on your key: {available_ids}")
-
-        # Targeted preference matching your exact key entitlements:
-        preference = [
-            "openai/gpt-oss-120b",
-            "openai/gpt-oss-20b",
-            "qwen/qwen3.8-27b",
-            "allam-2-7b"
-        ]
-
-        for pref in preference:
-            if pref in available_ids:
-                ACTIVE_GROQ_MODEL = pref
-                break
-
-        logger.info(f"Selected Groq Model: {ACTIVE_GROQ_MODEL}")
-
-    except Exception as e:
-        logger.warning(f"Could not initialize Groq client: {e}")
-        groq_client = None
+def init_groq():
+    global groq_client, ACTIVE_GROQ_MODEL, _groq_initialized
+    if _groq_initialized:
+        return
+    _groq_initialized = True
+    if GROQ_API_KEY.startswith("gsk_"):
+        try:
+            groq_client = Groq(api_key=GROQ_API_KEY, timeout=12.0)
+            models_data = groq_client.models.list()
+            available_ids = [m.id for m in models_data.data]
+            preference = [
+                "openai/gpt-oss-120b",
+                "openai/gpt-oss-20b",
+                "qwen/qwen3.8-27b",
+                "allam-2-7b"
+            ]
+            for pref in preference:
+                if pref in available_ids:
+                    ACTIVE_GROQ_MODEL = pref
+                    break
+            logger.info(f"Selected Groq Model: {ACTIVE_GROQ_MODEL}")
+        except Exception as e:
+            logger.warning(f"Could not initialize Groq client: {e}")
+            groq_client = None
 
 # Fallback: Ollama Local
 ollama_client = OpenAI(
@@ -53,6 +53,7 @@ ollama_client = OpenAI(
 OLLAMA_MODEL = "llama3.2:3b"
 
 def run_llm_with_failover(messages: list, json_mode: bool = False) -> tuple[str, str]:
+    init_groq()
     # 1. Attempt Groq Cloud
     if groq_client and ACTIVE_GROQ_MODEL:
         try:

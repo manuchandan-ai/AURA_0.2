@@ -17,10 +17,19 @@ Everyday individuals and knowledge workers struggle with fragmented digital work
 * **Enterprise Security & Governance:** Cryptographic PBKDF2 per-user salted authentication, signed JWT Bearer access control, and complete administrator lifecycle moderation (Approvals, Suspensions, Appeals).
 
 ## 3. User Personas
+<<<<<<< HEAD
 1. **The Academic / Student:** Breaks down complex subjects via the Feynman technique, parses lecture slides, and tracks study milestones.
 2. **The Health & Fitness Operator:** Designs workout splits, maintains training streaks with freeze shield protection, and receives morning voice briefings.
 3. **The Professional & Freelancer:** Ingests contracts, drafts salary negotiation scripts, and tracks multi-phase client deliverables.
 4. **The System Administrator:** Audits operator activity, approves new registrations, mitigates suspicious access, and reviews ban appeals.
+=======
+AURA is designed as a universal cognitive engine for **all types of users**. While historically optimized for specific niches, the architecture now seamlessly adapts to any workflow. Key examples include, but are not limited to:
+1. **The Academic / Student:** Breaks down complex subjects via the Feynman technique, parses lecture slides, and tracks study milestones.
+2. **The Health & Fitness Operator:** Designs workout splits, maintains training streaks with freeze shield protection, and receives morning voice briefings.
+3. **The Professional, Creator & Founder:** Ingests contracts, drafts negotiation scripts, brainstorms content, and tracks multi-phase project deliverables.
+4. **The General Operator:** Organizes daily life routines, recipes, travel, and personal finance without friction.
+5. **The System Administrator:** Audits operator activity, approves new registrations, mitigates suspicious access, and reviews ban appeals.
+>>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 
 ## 4. Key Performance Indicators (KPIs)
 * **Auth Integrity:** 100% of non-public endpoints guarded by verified JWT Bearer tokens.

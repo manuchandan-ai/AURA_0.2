@@ -74,28 +74,48 @@ class AutonomousAgent:
 
     @staticmethod
     def audit_and_nudge():
-        """Morning cron creating motivational notifications for operators."""
+        """Morning cron creating motivational notifications and generating new daily tasks."""
         db = SessionLocal()
         try:
             today = date.today()
             users = db.query(User).all()
             for u in users:
-                pending_goals = db.query(Goal).filter(Goal.user_id == u.id, Goal.last_check_in_date != today).all()
-                if pending_goals:
-                    nudge_task = f"🎯 Daily momentum check: Check in on '{pending_goals[0].intention[:25]}...'"
-                    # Check if nudge already exists today
-                    exists = db.query(Reminder).filter(
-                        Reminder.user_id == u.id, 
-                        Reminder.task_text == nudge_task,
-                        Reminder.is_completed == False
-                    ).first()
-                    if not exists:
-                        db.add(Reminder(
-                            user_id=u.id,
-                            task_text=nudge_task,
-                            priority="Medium",
-                            due_info="Today"
-                        ))
+                pending_goals = db.query(Goal).filter(Goal.user_id == u.id).all()
+                for g in pending_goals:
+                    if g.progress_percentage >= 100:
+                        continue
+                        
+                    # Determine context based on existing routine
+                    context = g.daily_routine if getattr(g, 'daily_routine', None) else g.intention
+                    prompt = (
+                        f"The user is working on the goal: '{g.intention}'.\n"
+                        f"Their progress is {g.progress_percentage}%.\n"
+                        f"Context/Roadmap:\n{context}\n\n"
+                        "Generate ONE single, actionable, highly specific task that the user should do TODAY to move this goal forward. "
+                        "Output ONLY the task description, maximum 15 words."
+                    )
+                    
+                    try:
+                        task_text, _ = run_llm_with_failover([{"role": "user", "content": prompt}], json_mode=False)
+                        clean_task = task_text.strip().replace('"', '')
+                        
+                        exists = db.query(Reminder).filter(
+                            Reminder.user_id == u.id, 
+                            Reminder.task_text == clean_task,
+                            Reminder.is_completed == False
+                        ).first()
+                        
+                        if not exists and clean_task:
+                            db.add(Reminder(
+                                user_id=u.id,
+                                task_text=f"🎯 Daily Task: {clean_task}",
+                                priority="High",
+                                due_info="Today"
+                            ))
+                            logger.info(f"Generated daily task for user {u.username} on goal {g.id}: {clean_task}")
+                    except Exception as llm_e:
+                        logger.warning(f"Failed to generate daily task for goal {g.id}: {llm_e}")
+                        
             db.commit()
         except Exception as e:
             logger.error(f"Error in audit_and_nudge: {e}")

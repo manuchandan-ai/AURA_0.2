@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA // Personal Intelligence & Autonomous Companion</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            aura: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              900: '#134e4a',
+            },
+            surface: {
+              50: '#131b2e',
+              100: '#0f172a',
+              200: '#090d16',
+              border: 'rgba(255, 255, 255, 0.08)'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-surface-200 text-slate-100 font-sans antialiased h-screen overflow-hidden flex">
+
+  <!-- Ambient Glow Backdrop -->
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <div class="absolute -top-[25%] left-[20%] w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[140px]"></div>
+    <div class="absolute top-[40%] right-[10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[160px]"></div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 0. GET STARTED / INITIAL LANDING SCREEN                                   -->
+  <!-- ========================================================================= -->
+  <div id="landing-screen" class="fixed inset-0 z-40 bg-surface-200 overflow-y-auto flex flex-col justify-between selection:bg-teal-500 selection:text-surface-200">
+    
+    <!-- Top Landing Header -->
+    <header class="w-full max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-auto rounded-xl overflow-hidden border border-teal-500/30 flex items-center justify-center p-1 bg-black/40 shadow-lg shadow-teal-500/25">
+          <img src="aura_icon.png" alt="AURA Logo" class="h-8 w-auto object-contain filter drop-shadow-[0_0_10px_rgba(45,212,191,0.6)]">
+        </div>
+        <div class="flex flex-col">
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">AURA 2.0</span>
+          <span class="text-[10px] text-teal-400 font-semibold uppercase tracking-wider">Adaptive Reasoning Unified Assistant</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-surface-100 border border-surface-border text-xs text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Core Neural Engine Online</span>
+        </div>
+        <button id="btn-landing-top-cta" class="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-bold text-xs transition shadow-md shadow-teal-500/20">
+          Sign In
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="flex-1 flex flex-col items-center justify-center text-center px-6 py-12 max-w-4xl mx-auto">
+      
+      <!-- Glowing Pill Tag -->
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-teal-500/10 via-indigo-500/10 to-teal-500/10 border border-teal-500/25 text-teal-300 text-xs font-semibold mb-6 shadow-sm">
+        <i data-lucide="cpu" class="w-3.5 h-3.5 text-teal-400"></i>
+        <span>Autonomous Reasoning & Empathetic Voice Interface</span>
+      </div>
+
+      <!-- Hero Heading -->
+      <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white max-w-3xl leading-tight sm:leading-tight mb-4">
+        Empower Your Daily Momentum with <span class="bg-gradient-to-r from-teal-400 via-teal-200 to-indigo-400 bg-clip-text text-transparent">Personal Intelligence</span>
+      </h1>
+
+      <!-- Hero Subtitle -->
+      <p class="text-sm sm:text-base text-slate-300 max-w-2xl mb-8 leading-relaxed font-normal">
+        Experience real-time natural voice conversation, automated strategic roadmaps, intelligent daily directives, and domain-focused advisory in a unified, privacy-first companion.
+      </p>
+
+      <!-- Dynamic CTA Box (Auto-updates depending on whether user has an active session or not) -->
+      <div id="landing-cta-box" class="w-full max-w-md mx-auto mb-10">
+        <!-- Injected via JavaScript: either Get Started buttons or Resume Session Card -->
+      </div>
+
+      <!-- Feature Grid (4 Pillars) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full text-left mt-4">
+        
+        <div class="p-4 rounded-2xl bg-surface-100/70 border border-surface-border hover:border-teal-500/30 transition">
+          <div class="w-9 h-9 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 mb-3">
+            <i data-lucide="mic" class="w-4 h-4"></i>
+          </div>
+          <h4 class="font-bold text-white text-sm mb-1">Human Voice Stream</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">Turn-taking speech recognition and natural voice synthesis with zero audio loops.</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-100/70 border border-surface-border hover:border-indigo-500/30 transition">
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-3">
+            <i data-lucide="target" class="w-4 h-4"></i>
+          </div>
+          <h4 class="font-bold text-white text-sm mb-1">Automated Roadmaps</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">Formulate ambitious goals; AURA drafts phased roadmaps and automated daily task checklists.</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-100/70 border border-surface-border hover:border-amber-500/30 transition">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-3">
+            <i data-lucide="layers" class="w-4 h-4"></i>
+          </div>
+          <h4 class="font-bold text-white text-sm mb-1">Multi-Domain Focus</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">Targeted guidance for Software Engineering, Cybersecurity, AI/ML, Career, and Productivity.</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-surface-100/70 border border-surface-border hover:border-rose-500/30 transition">
+          <div class="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-3">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+          </div>
+          <h4 class="font-bold text-white text-sm mb-1">Security & Governance</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">Admin console, streak freeze protection shields, and local encrypted artifact storage.</p>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Landing Footer -->
+    <footer class="w-full border-t border-surface-border py-4 px-6 text-xs text-slate-400">
+      <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        <span>AURA 2.0 Autonomous Intelligence Platform &bull; Local &amp; Privacy-Preserving Neural Engine</span>
+        <div class="flex items-center gap-5 text-slate-400 font-medium">
+          <button id="btn-landing-nav-about" class="hover:text-teal-400 transition cursor-pointer">About Us</button>
+          <button id="btn-landing-nav-faq" class="hover:text-teal-400 transition cursor-pointer">Help &amp; FAQ</button>
+          <button id="btn-landing-nav-contact" class="hover:text-teal-400 transition cursor-pointer">Contact Us</button>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- App Shell Container -->
+  <div id="app" class="relative z-10 w-full h-full flex">
+
+    <!-- Mobile Slidebar Backdrop Overlay -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 hidden md:hidden"></div>
+
+    <!-- 1. Collapsible Slidebar Sidebar -->
+    <aside id="sidebar" class="w-72 bg-surface-100/80 backdrop-blur-xl border-r border-surface-border flex flex-col justify-between select-none shrink-0 z-30">
+      
+      <!-- Top Section (Scrollable to prevent upward/downward cutoff) -->
+      <div class="p-4 flex flex-col gap-3.5 flex-1 min-h-0 overflow-y-auto">
+        
+        <!-- Logo / Back Button to Home + Collapse Icon -->
+        <div class="flex items-center justify-between gap-1">
+          <button id="btn-logo-home" title="Go Back / Return to Previous View" class="flex-1 flex items-center justify-between p-2 rounded-xl hover:bg-white/5 transition group cursor-pointer text-left">
+            <div class="flex items-center gap-2.5">
+              <div class="h-9 w-auto rounded-lg overflow-hidden border border-teal-500/30 flex items-center justify-center p-0.5 bg-black/40 shadow-lg shadow-teal-500/20 group-hover:scale-105 transition">
+                <img src="aura_icon.png" alt="AURA" class="h-7 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(45,212,191,0.5)]">
+              </div>
+              <div class="flex flex-col">
+                <span class="font-bold text-sm tracking-tight text-white group-hover:text-teal-300 transition flex items-center gap-1">
+                  <span>AURA</span>
+                  <span class="text-[9px] text-teal-400 font-semibold px-1 py-0.2 rounded bg-teal-500/10 border border-teal-500/20">2.0</span>
+                </span>
+                <span class="text-[10px] text-slate-400 font-medium group-hover:text-teal-300 transition flex items-center gap-1">
+                  <i data-lucide="chevron-left" class="w-3 h-3 text-teal-400"></i>
+                  <span>Backward / Back</span>
+                </span>
+              </div>
+            </div>
+          </button>
+          <button id="btn-sidebar-collapse" title="Collapse Slidebar" class="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition">
+            <i data-lucide="panel-left-close" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- New Chat Trigger -->
+        <button id="btn-new-chat" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500/15 to-indigo-500/15 hover:from-teal-500/25 hover:to-indigo-500/25 border border-teal-500/30 text-white font-medium text-sm transition shadow-sm">
+          <div class="flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4 text-teal-400"></i>
+            <span>New Conversation</span>
+          </div>
+          <span class="text-[10px] text-slate-400 bg-surface-200/80 px-1.5 py-0.5 rounded border border-white/5">Ctrl K</span>
+        </button>
+
+        <!-- Primary Navigation Links -->
+        <nav class="flex flex-col gap-1 mt-1 text-sm font-medium text-slate-300">
+          <button data-view="home" class="nav-tab active flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="layout-dashboard" class="w-4 h-4 text-teal-400"></i>
+            <span>Home Dashboard</span>
+          </button>
+          <button data-view="chat" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="message-square" class="w-4 h-4 text-teal-400"></i>
+            <span>Conversations & Voice</span>
+          </button>
+          <button data-view="goals" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="target" class="w-4 h-4 text-indigo-400"></i>
+            <span>Goals & Roadmaps</span>
+          </button>
+          <button data-view="reminders" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-amber-400"></i>
+            <span>Directives & Tasks</span>
+          </button>
+          <button data-view="modules" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="layers" class="w-4 h-4 text-purple-400"></i>
+            <span>Domain Focus</span>
+          </button>
+          <button data-view="artifacts" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="folder" class="w-4 h-4 text-blue-400"></i>
+            <span>Knowledge Vault</span>
+          </button>
+          <button data-view="profile" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="user" class="w-4 h-4 text-emerald-400"></i>
+            <span>Operator Profile</span>
+          </button>
+          <!-- Admin Tab (Shown only to admins) -->
+          <button data-view="admin" id="nav-admin-tab" class="nav-tab hidden flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-rose-500/10 hover:text-rose-300 text-rose-400 transition">
+            <i data-lucide="shield-check" class="w-4 h-4 text-rose-400"></i>
+            <span>Admin Governance</span>
+          </button>
+
+          <!-- Divider -->
+          <div class="h-px bg-surface-border my-1"></div>
+          <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider px-3">Information & Support</span>
+
+          <button data-view="about" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="info" class="w-4 h-4 text-sky-400"></i>
+            <span>About Us</span>
+          </button>
+          <button data-view="faq" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="help-circle" class="w-4 h-4 text-emerald-400"></i>
+            <span>Help & FAQ</span>
+          </button>
+          <button data-view="contact" class="nav-tab flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white transition">
+            <i data-lucide="mail" class="w-4 h-4 text-pink-400"></i>
+            <span>Contact Us</span>
+          </button>
+          <!-- Welcome / Landing link -->
+          <button id="nav-btn-landing" class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 hover:text-white text-slate-400 transition text-xs mt-0.5">
+            <i data-lucide="compass" class="w-4 h-4 text-teal-400/80"></i>
+            <span>Welcome Screen</span>
+          </button>
+        </nav>
+
+        <!-- Divider -->
+        <div class="h-px bg-surface-border my-1"></div>
+
+        <!-- Chat History List -->
+        <div>
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3">Recent Chats</span>
+          <div id="sidebar-history-list" class="flex flex-col gap-1 mt-2 max-h-48 overflow-y-auto pr-1">
+            <span class="text-xs text-slate-500 px-3 py-2 italic">Loading history...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom User Profile Deck -->
+      <div class="p-3 border-t border-surface-border bg-surface-100/50">
+        <div class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-white/5 transition">
+          <div class="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1" onclick="switchView('profile')" title="View Operator Profile">
+            <div id="user-avatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-teal-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs uppercase shrink-0 overflow-hidden border border-teal-500/30">
+              U
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span id="user-display-name" class="text-xs font-semibold text-white truncate hover:text-teal-300 transition">Operator</span>
+              <span id="user-display-role" class="text-[10px] text-slate-400 uppercase tracking-wider truncate">Active</span>
+            </div>
+          </div>
+          <button id="btn-logout" title="Sign Out" class="p-1.5 rounded-md hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- 2. Main Workspace Stage -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-surface-200/50 relative">
+      
+      <!-- Top Action Ribbon -->
+      <header class="h-16 border-b border-surface-border px-6 flex items-center justify-between bg-surface-100/40 backdrop-blur-md shrink-0">
+        <div class="flex items-center gap-3">
+          <!-- Slidebar Toggle Button -->
+          <button id="btn-toggle-sidebar" title="Toggle Slidebar" class="p-2 rounded-xl hover:bg-white/5 border border-white/5 hover:border-teal-500/30 text-slate-300 hover:text-teal-400 transition">
+            <i data-lucide="panel-left" class="w-4 h-4"></i>
+          </button>
+
+          <!-- Universal AURA Logo / Backward Button -->
+          <button id="btn-universal-logo-back" title="Go Back / Return to Previous View" class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-surface-200/80 hover:bg-white/10 border border-white/10 hover:border-teal-500/40 transition group cursor-pointer shadow-sm">
+            <img src="aura_icon.png" alt="AURA" class="h-6 w-auto object-contain rounded filter drop-shadow-[0_0_8px_rgba(45,212,191,0.5)] group-hover:scale-105 transition">
+            <span class="hidden sm:flex items-center gap-1 text-[11px] font-bold text-teal-400 group-hover:text-teal-300 transition">
+              <i data-lucide="chevron-left" class="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform"></i>
+              <span>Back</span>
+            </span>
+          </button>
+
+          <h1 id="page-title" class="font-semibold text-base text-white">Home Dashboard</h1>
+          <div id="ai-status-pill" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse"></span>
+            <span id="ai-status-text">AURA Ready</span>
+          </div>
+        </div>
+
+        <!-- Telemetry Actions -->
+        <div class="flex items-center gap-3">
+          <!-- Daily Audio Briefing -->
+          <button id="btn-play-briefing" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-200 transition">
+            <i data-lucide="volume-2" class="w-3.5 h-3.5 text-teal-400"></i>
+            <span>Daily Briefing</span>
+          </button>
+
+          <!-- Freeze Shield Pill -->
+          <div id="shield-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-300">
+            <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Shields: <b id="shield-count" class="text-white">0</b></span>
+          </div>
+
+          <!-- Quick Profile Button -->
+          <button id="btn-header-profile" onclick="switchView('profile')" title="Operator Profile" class="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-200 transition cursor-pointer">
+            <div id="header-avatar" class="w-5 h-5 rounded-full bg-teal-500/30 text-teal-300 flex items-center justify-center text-[10px] font-bold uppercase overflow-hidden border border-teal-500/40">
+              U
+            </div>
+            <span class="hidden sm:inline">Profile</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      <div class="flex-1 overflow-hidden relative">
+
+        <!-- VIEW 0: HOME DASHBOARD (DEFAULT LANDING) -->
+        <section id="view-home" class="view-panel active h-full overflow-y-auto px-6 max-w-6xl mx-auto scroll-smooth">
+          
+          <!-- ============================================================== -->
+          <!-- 1. INITIAL VIEWPORT HERO: SEARCH BUTTON & JARVIS-LIKE AURA ORB -->
+          <!-- ============================================================== -->
+          <div id="home-hero-jarvis" class="min-h-[calc(100vh-5rem)] flex flex-col items-center justify-center text-center relative py-10">
+            
+            <!-- Arc Reactor / Holographic JARVIS Aura Orb -->
+            <div class="relative flex items-center justify-center mb-8 group cursor-pointer" onclick="toggleJarvisVoiceHome()" title="Click to Talk with AURA">
+              <!-- Outer Rotating Holographic Rings -->
+              <div class="absolute w-64 h-64 sm:w-72 sm:h-72 rounded-full border border-teal-500/20 border-dashed animate-[spin_20s_linear_infinite] pointer-events-none"></div>
+              <div class="absolute w-56 h-56 sm:w-64 sm:h-64 rounded-full border border-indigo-500/25 border-dotted animate-[spin_12s_linear_infinite_reverse] pointer-events-none"></div>
+              
+              <!-- Ambient Glowing Halo -->
+              <div class="absolute w-48 h-48 sm:w-56 sm:h-56 rounded-full bg-gradient-to-tr from-teal-500/20 via-indigo-500/20 to-teal-400/20 blur-2xl animate-pulse"></div>
+              
+              <!-- Core Arc-Reactor Shell -->
+              <div class="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-surface-100/90 border border-teal-500/40 p-4 shadow-[0_0_50px_rgba(45,212,191,0.25)] flex flex-col items-center justify-center transition-all duration-500 group-hover:scale-105 group-hover:border-teal-400 group-hover:shadow-[0_0_70px_rgba(45,212,191,0.45)]">
+                <!-- Inner Emblem Image -->
+                <img src="aura_icon.png" alt="AURA Hologram" class="w-28 sm:w-32 h-auto object-contain filter drop-shadow-[0_0_12px_rgba(45,212,191,0.8)] transition-transform duration-500 group-hover:scale-110">
+                
+                <!-- Live Voice Pulse Waves -->
+                <div id="home-orb-soundwave" class="flex items-center gap-1 mt-2">
+                  <span class="w-1 h-2 bg-teal-400/60 rounded-full animate-pulse"></span>
+                  <span class="w-1 h-3.5 bg-teal-400 rounded-full animate-pulse delay-75"></span>
+                  <span class="w-1 h-5 bg-teal-300 rounded-full animate-pulse delay-150"></span>
+                  <span class="w-1 h-3.5 bg-teal-400 rounded-full animate-pulse delay-75"></span>
+                  <span class="w-1 h-2 bg-teal-400/60 rounded-full animate-pulse"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- JARVIS Neural Core Status Text -->
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-2 h-2 rounded-full bg-teal-400 animate-ping"></span>
+              <span class="text-xs font-bold tracking-widest uppercase text-teal-300 bg-teal-500/10 px-3 py-1 rounded-full border border-teal-500/25">
+                ● AURA NEURAL CORE ONLINE
+              </span>
+            </div>
+            
+            <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">
+              How may I assist your trajectory today?
+            </h2>
+            <p class="text-xs sm:text-sm text-slate-400 max-w-lg mb-8 leading-relaxed">
+              Autonomous reasoning, voice activation, and goal accountability at your directive.
+            </p>
+
+            <!-- Omnibar Search & Command Input -->
+            <div class="w-full max-w-2xl relative">
+              <form id="form-home-search" onsubmit="event.preventDefault(); submitHomeSearch();" class="relative flex items-center">
+                <div class="absolute left-4 text-slate-400 pointer-events-none">
+                  <i data-lucide="search" class="w-5 h-5 text-teal-400/80"></i>
+                </div>
+                <input 
+                  type="text" 
+                  id="home-search-input" 
+                  placeholder="Ask AURA anything, search directives, or command your day..." 
+                  class="w-full pl-12 pr-28 py-4 bg-surface-100/90 border border-surface-border hover:border-teal-500/40 focus:border-teal-400 rounded-2xl text-sm sm:text-base text-white placeholder-slate-500 focus:outline-none shadow-2xl backdrop-blur-xl transition"
+                >
+                <div class="absolute right-2.5 flex items-center gap-1.5">
+                  <button 
+                    type="button" 
+                    id="btn-home-mic" 
+                    onclick="toggleJarvisVoiceHome()" 
+                    title="Voice Activation" 
+                    class="p-2.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-teal-400 transition cursor-pointer"
+                  >
+                    <i data-lucide="mic" class="w-4 h-4"></i>
+                  </button>
+                  <button 
+                    type="submit" 
+                    id="btn-home-search" 
+                    title="Search or Send Directive" 
+                    class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-bold text-xs transition shadow-lg shadow-teal-500/25 cursor-pointer"
+                  >
+                    <span>Search</span>
+                    <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </form>
+
+              <!-- Quick Command Suggestion Chips -->
+              <div class="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs">
+                <button onclick="setHomeSearch('🎯 Create a 30-day goal to master Python')" class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 transition text-[11px] cursor-pointer">
+                  🎯 30-Day Goal
+                </button>
+                <button onclick="setHomeSearch('📋 Check my pending directives for today')" class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 transition text-[11px] cursor-pointer">
+                  📋 Daily Directives
+                </button>
+                <button onclick="playDailyBriefing()" class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 transition text-[11px] cursor-pointer">
+                  🎙️ Audio Briefing
+                </button>
+                <button onclick="setHomeSearch('⚡ What is my top streak and momentum status?')" class="px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-slate-300 transition text-[11px] cursor-pointer">
+                  🔥 Streak Telemetry
+                </button>
+              </div>
+            </div>
+
+            <!-- Scroll Down Indicator to Reveal Workspace -->
+            <div class="mt-12 flex flex-col items-center gap-1.5 text-xs text-slate-400 hover:text-teal-300 transition cursor-pointer animate-bounce" onclick="document.getElementById('home-dashboard-content').scrollIntoView({ behavior: 'smooth' })">
+              <span class="tracking-widest uppercase text-[10px] font-bold text-slate-500">Scroll down to explore directives & metrics</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-teal-400"></i>
+            </div>
+          </div>
+
+          <!-- ============================================================== -->
+          <!-- 2. WORKSPACE TELEMETRY CONTENT (REVEALED UPON SCROLLING DOWN)  -->
+          <!-- ============================================================== -->
+          <div id="home-dashboard-content" class="pt-8 pb-12 border-t border-white/5">
+            <!-- Welcome Hero Banner -->
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-surface-100 via-surface-100/90 to-teal-950/30 border border-surface-border mb-6">
+              <div>
+                <span class="text-xs font-bold text-teal-400 tracking-wider uppercase">Active Operator Dashboard</span>
+                <h2 id="home-greeting" class="text-2xl font-bold text-white mt-1">Good day, Operator</h2>
+                <p class="text-xs text-slate-400 mt-1">Your neural assistant AURA is synchronized and ready for today's directives.</p>
+              </div>
+              <div class="flex items-center gap-2.5">
+                <button onclick="switchView('chat')" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-semibold text-xs transition shadow-lg shadow-teal-500/20">
+                  <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                  <span>Open Chat & Voice</span>
+                </button>
+                <button onclick="openGoalModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition border border-white/10">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>New Goal</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key Metrics Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div class="bg-surface-100 border border-surface-border rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 font-medium">Active Goals</span>
+                  <h3 id="stat-goals-count" class="text-xl font-bold text-white mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                  <i data-lucide="target" class="w-5 h-5"></i>
+                </div>
+              </div>
+
+              <div class="bg-surface-100 border border-surface-border rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 font-medium">Pending Tasks</span>
+                  <h3 id="stat-tasks-count" class="text-xl font-bold text-white mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400">
+                  <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                </div>
+              </div>
+
+              <div class="bg-surface-100 border border-surface-border rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 font-medium">Top Streak</span>
+                  <h3 id="stat-peak-streak" class="text-xl font-bold text-amber-400 mt-1">🔥 0d</h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400">
+                  <i data-lucide="flame" class="w-5 h-5"></i>
+                </div>
+              </div>
+
+              <div class="bg-surface-100 border border-surface-border rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <span class="text-xs text-slate-400 font-medium">Shields Available</span>
+                  <h3 id="stat-shield-count" class="text-xl font-bold text-teal-400 mt-1">0</h3>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-teal-400">
+                  <i data-lucide="shield" class="w-5 h-5"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Two-Column Workspace Content -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              <!-- Left Column: Active Goals Progress (2 Cols) -->
+              <div class="lg:col-span-2 flex flex-col gap-6">
+                <div class="bg-surface-100 border border-surface-border rounded-2xl p-5">
+                  <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="target" class="w-4 h-4 text-teal-400"></i>
+                      <h3 class="font-bold text-white text-sm">Active Goals & Trajectories</h3>
+                    </div>
+                    <button onclick="switchView('goals')" class="text-xs text-teal-400 hover:text-teal-300 font-medium">View All →</button>
+                  </div>
+                  <div id="home-goals-container" class="flex flex-col gap-3">
+                    <p class="text-xs text-slate-500 italic py-4 text-center">Loading goals...</p>
+                  </div>
+                </div>
+
+                <!-- Domain Quick Launchers -->
+                <div class="bg-surface-100 border border-surface-border rounded-2xl p-5">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="layers" class="w-4 h-4 text-purple-400"></i>
+                      <h3 class="font-bold text-white text-sm">Domain Advisory Modules</h3>
+                    </div>
+                    <button onclick="switchView('modules')" class="text-xs text-purple-400 hover:text-purple-300 font-medium">Explore All →</button>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2.5" id="home-modules-grid">
+                    <!-- Injected via JS -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Column: Today's Tasks & Audio Briefing (1 Col) -->
+              <div class="flex flex-col gap-6">
+                
+                <!-- Daily Tasks Checklist Card -->
+                <div class="bg-surface-100 border border-surface-border rounded-2xl p-5">
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="check-circle" class="w-4 h-4 text-amber-400"></i>
+                      <h3 class="font-bold text-white text-sm">Today's Directives</h3>
+                    </div>
+                    <button onclick="switchView('reminders')" class="text-xs text-amber-400 hover:text-amber-300 font-medium">Manage →</button>
+                  </div>
+                  <div id="home-tasks-container" class="flex flex-col gap-2">
+                    <p class="text-xs text-slate-500 italic py-4 text-center">Loading directives...</p>
+                  </div>
+                </div>
+
+                <!-- Quick Command / Voice Launch Card -->
+                <div class="bg-gradient-to-br from-surface-100 to-teal-950/20 border border-surface-border rounded-2xl p-5 flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center gap-2 text-teal-400 mb-2">
+                      <i data-lucide="mic" class="w-4 h-4"></i>
+                      <h4 class="font-bold text-white text-sm">Instant Voice Directive</h4>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed mb-4">Click below or tap Spacebar to talk with AURA in real time.</p>
+                  </div>
+                  <button onclick="switchView('chat'); setTimeout(startListening, 300);" class="w-full py-2.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 font-semibold text-xs border border-teal-500/30 transition flex items-center justify-center gap-2">
+                    <i data-lucide="mic" class="w-4 h-4"></i>
+                    <span>Talk with AURA ➔</span>
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 1: CONVERSATIONS & HUMAN VOICE -->
+        <section id="view-chat" class="view-panel hidden h-full flex flex-col justify-between">
+          
+          <!-- Conversation Scroll Stream -->
+          <div id="chat-messages" class="flex-1 overflow-y-auto px-6 py-6 flex flex-col gap-4 max-w-4xl mx-auto w-full">
+            <!-- Initial Greeting Bubble -->
+            <div class="chat-bubble aura flex gap-3.5 max-w-2xl">
+              <div class="w-7 h-7 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-teal-400"></i>
+              </div>
+              <div class="bubble-content bg-surface-100/90 border border-surface-border rounded-2xl rounded-tl-sm p-4 text-slate-200 text-sm leading-relaxed shadow-sm">
+                Hey there! I'm AURA, your personal partner. You can type to me here or tap the microphone below to talk naturally. How is your day going so far?
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Voice & Input Dock -->
+          <div class="p-6 bg-gradient-to-t from-surface-200 via-surface-200/90 to-transparent">
+            <div class="max-w-4xl mx-auto">
+              
+              <!-- Ambient Voice Wave Indicator (Glows when speaking/listening) -->
+              <div id="voice-wave-container" class="hidden mb-3 p-3 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-between backdrop-blur-lg">
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-1">
+                    <span class="wave-bar bg-teal-400"></span>
+                    <span class="wave-bar bg-teal-400" style="animation-delay: 0.15s"></span>
+                    <span class="wave-bar bg-teal-400" style="animation-delay: 0.3s"></span>
+                    <span class="wave-bar bg-teal-400" style="animation-delay: 0.45s"></span>
+                  </div>
+                  <span id="voice-live-text" class="text-xs font-medium text-teal-300">Listening to your voice... (Speak naturally)</span>
+                </div>
+                <button id="btn-cancel-voice" class="text-xs font-semibold px-2.5 py-1 rounded bg-teal-500/20 hover:bg-teal-500/30 text-teal-200 transition">Done</button>
+              </div>
+
+              <!-- Main Command Pill -->
+              <div class="flex items-center gap-2 p-1.5 rounded-2xl bg-surface-100 border border-surface-border shadow-xl focus-within:border-teal-500/50 transition">
+                
+                <!-- Artifact / File Attachment -->
+                <label for="chat-file-input" class="p-2.5 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white cursor-pointer transition">
+                  <i data-lucide="plus" class="w-4 h-4"></i>
+                  <input type="file" id="chat-file-input" class="hidden" accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.csv">
+                </label>
+
+                <!-- Textarea / Input -->
+                <input type="text" id="chat-input" placeholder="Message AURA or speak naturally..." class="flex-1 bg-transparent border-none text-sm text-white placeholder-slate-500 focus:outline-none px-2">
+
+                <!-- Push-to-Talk Mic Trigger -->
+                <button id="btn-mic-toggle" title="Click to talk (or press Spacebar)" class="p-2.5 rounded-xl bg-white/5 hover:bg-teal-500/20 text-slate-400 hover:text-teal-300 transition flex items-center gap-1.5">
+                  <i data-lucide="mic" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Send Button -->
+                <button id="btn-send-message" class="p-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 transition">
+                  <i data-lucide="arrow-up" class="w-4 h-4 text-surface-200"></i>
+                </button>
+
+              </div>
+              <div class="flex items-center justify-between px-2 mt-2 text-[11px] text-slate-500">
+                <span>Click the mic or hold <b>Spacebar</b> to talk</span>
+                <span id="selected-file-label" class="text-teal-400 truncate max-w-xs"></span>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- VIEW 2: GOALS & AUTOMATED ROADMAPS -->
+        <section id="view-goals" class="view-panel hidden h-full overflow-y-auto p-8 max-w-5xl mx-auto">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-xl font-bold text-white">Strategic Goals & Momentum</h2>
+              <p class="text-sm text-slate-400">Progress updates automatically as you check in and build momentum.</p>
+            </div>
+            <button id="btn-open-goal-modal" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-semibold text-sm transition">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Define New Goal</span>
+            </button>
+          </div>
+
+          <!-- Goals List Grid -->
+          <div id="goals-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-8 text-center text-slate-500 text-sm col-span-2 border border-dashed border-white/10 rounded-2xl">
+              Loading your goals...
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 3: DIRECTIVES & REMINDERS -->
+        <section id="view-reminders" class="view-panel hidden h-full overflow-y-auto p-8 max-w-4xl mx-auto">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-xl font-bold text-white">Directives & Daily Tasks</h2>
+              <p class="text-sm text-slate-400">Extracted automatically from your goals and daily habits.</p>
+            </div>
+          </div>
+
+          <!-- Add Quick Reminder Bar -->
+          <form id="form-add-task" class="flex flex-col sm:flex-row gap-2.5 mb-6 bg-surface-100/70 p-3 rounded-2xl border border-surface-border shadow-sm">
+            <div class="flex-1 flex items-center gap-2 bg-surface-200/80 rounded-xl px-3.5 py-2 border border-white/5 focus-within:border-teal-500/50 transition">
+              <i data-lucide="check-square" class="w-4 h-4 text-teal-400 shrink-0"></i>
+              <input type="text" id="new-task-input" placeholder="Add a new directive or daily habit (press Enter)..." class="flex-1 bg-transparent text-sm text-white focus:outline-none placeholder-slate-500">
+            </div>
+            <select id="new-task-goal" class="bg-surface-200/80 text-xs text-slate-300 rounded-xl px-3 py-2 border border-white/5 focus:outline-none focus:border-teal-500/50 shrink-0">
+              <option value="">General Directive</option>
+            </select>
+            <button type="submit" id="btn-add-task" class="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-semibold text-xs transition flex items-center justify-center gap-1.5 shrink-0 shadow-md shadow-teal-500/20 cursor-pointer">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Add Directive</span>
+            </button>
+          </form>
+
+          <!-- Task List -->
+          <div id="reminders-list" class="flex flex-col gap-2.5">
+            <div class="p-8 text-center text-slate-500 text-sm border border-dashed border-white/10 rounded-2xl">
+              Zero pending directives. You're completely caught up!
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 4: DOMAIN MODULES -->
+        <section id="view-modules" class="view-panel hidden h-full overflow-y-auto p-8 max-w-5xl mx-auto">
+          <div class="mb-6">
+            <h2 class="text-xl font-bold text-white">Domain Focus Modules</h2>
+            <p class="text-sm text-slate-400">Tailored advisory personas grounded in your goals and context.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="modules-cards-container">
+            <!-- Dynamic Module Cards Populated via JS -->
+          </div>
+        </section>
+
+        <!-- VIEW 5: KNOWLEDGE VAULT -->
+        <section id="view-artifacts" class="view-panel hidden h-full overflow-y-auto p-8 max-w-4xl mx-auto">
+          <div class="mb-6">
+            <h2 class="text-xl font-bold text-white">Knowledge Vault & Artifacts</h2>
+            <p class="text-sm text-slate-400">Upload documents and images for deep local vector search and analysis.</p>
+          </div>
+
+          <div class="p-8 border-2 border-dashed border-white/10 hover:border-teal-500/40 rounded-2xl text-center bg-surface-100/40 mb-8 transition">
+            <i data-lucide="upload-cloud" class="w-10 h-10 text-teal-400 mx-auto mb-3"></i>
+            <p class="text-sm font-medium text-white mb-1">Click to upload files</p>
+            <p class="text-xs text-slate-400 mb-4">Supports PDF, Markdown, TXT, CSV, PNG, JPG</p>
+            <input type="file" id="vault-file-input" class="hidden">
+            <button onclick="document.getElementById('vault-file-input').click()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs transition">Browse Files</button>
+          </div>
+
+          <div id="vault-artifacts-list" class="flex flex-col gap-3">
+            <p class="text-xs text-slate-500 italic">No artifacts uploaded yet.</p>
+          </div>
+        </section>
+
+        <!-- VIEW 6: ADMIN GOVERNANCE (ADMIN ONLY) -->
+        <section id="view-admin" class="view-panel hidden h-full overflow-y-auto p-8 max-w-5xl mx-auto">
+          <div class="mb-6">
+            <h2 class="text-xl font-bold text-white">Security & Platform Governance</h2>
+            <p class="text-sm text-slate-400">Review registered operators, manage approvals, ban/unban users, and resolve appeals.</p>
+          </div>
+
+          <!-- Pending Approvals Desk -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-5 mb-6">
+            <h3 class="font-bold text-white text-sm mb-3 flex items-center gap-2">
+              <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+              <span>Pending Operator Requests</span>
+            </h3>
+            <div id="admin-pending-list" class="flex flex-col gap-2.5">
+              <p class="text-xs text-slate-500 italic py-2">No pending approval requests.</p>
+            </div>
+          </div>
+
+          <!-- Registered Users Table -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-5 mb-6">
+            <h3 class="font-bold text-white text-sm mb-3 flex items-center gap-2">
+              <i data-lucide="users" class="w-4 h-4 text-teal-400"></i>
+              <span>Registered System Operators</span>
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead>
+                  <tr class="text-slate-400 border-b border-surface-border">
+                    <th class="pb-2 font-semibold">User</th>
+                    <th class="pb-2 font-semibold">Role</th>
+                    <th class="pb-2 font-semibold">Status</th>
+                    <th class="pb-2 font-semibold">Shields</th>
+                    <th class="pb-2 font-semibold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-users-table" class="divide-y divide-surface-border">
+                  <tr><td colspan="5" class="py-4 text-slate-500 text-center italic">Loading operators...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Appeals Desk -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-5">
+            <h3 class="font-bold text-white text-sm mb-3 flex items-center gap-2">
+              <i data-lucide="file-question" class="w-4 h-4 text-indigo-400"></i>
+              <span>Ban Appeals Queue</span>
+            </h3>
+            <div id="admin-appeals-list" class="flex flex-col gap-2.5">
+              <p class="text-xs text-slate-500 italic py-2">No active appeals pending review.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 7: ABOUT US -->
+        <section id="view-about" class="view-panel hidden h-full overflow-y-auto p-8 max-w-5xl mx-auto">
+          <!-- Hero Header -->
+          <div class="mb-8 text-center max-w-3xl mx-auto">
+            <span class="text-xs font-bold text-teal-400 uppercase tracking-widest px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 inline-block mb-3">Our Mission &amp; Architecture</span>
+            <h2 class="text-3xl font-extrabold text-white tracking-tight">About AURA 2.0</h2>
+            <p class="text-sm text-slate-300 mt-2 leading-relaxed">
+              Engineered to replace robotic, impersonal bots with an articulate, empathetic, and proactive cognitive partner that helps you achieve goals, maintain momentum, and master complex domains.
+            </p>
+          </div>
+
+          <!-- Story / Vision Card -->
+          <div class="bg-gradient-to-br from-surface-100 to-teal-950/20 border border-surface-border rounded-2xl p-6 sm:p-8 mb-6 shadow-xl">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-300">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-white">The Autonomous Companion Vision</h3>
+                <span class="text-xs text-slate-400">Human-grade synergy between voice, roadmaps, and local memory</span>
+              </div>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-4">
+              Most AI assistants today are reactive text prompts that forget your goals the moment you close the tab. AURA was created with a fundamentally different premise: intelligence should feel human, preserve your privacy, and actively keep you moving forward.
+            </p>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              By uniting real-time turn-taking speech synthesis, automated goal decomposition, streak protection shields, and local vector RAG, AURA delivers an intimate, high-velocity workbench for creators, engineers, and operators.
+            </p>
+          </div>
+
+          <!-- Core Values Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-5 hover:border-teal-500/30 transition">
+              <div class="flex items-center gap-2.5 text-teal-400 mb-2 font-bold text-sm">
+                <i data-lucide="heart" class="w-4 h-4"></i>
+                <span>Human Warmth &amp; Empathy</span>
+              </div>
+              <p class="text-xs text-slate-400 leading-relaxed">No robotic monologues or formal clichés. Calibrated to sound and feel like a real conversational peer.</p>
+            </div>
+
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-5 hover:border-indigo-500/30 transition">
+              <div class="flex items-center gap-2.5 text-indigo-400 mb-2 font-bold text-sm">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                <span>Privacy &amp; Local Persistence</span>
+              </div>
+              <p class="text-xs text-slate-400 leading-relaxed">Your data lives in your local SQLite and offline embeddings. Zero tracking, zero third-party telemetry leakage.</p>
+            </div>
+
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-5 hover:border-amber-500/30 transition">
+              <div class="flex items-center gap-2.5 text-amber-400 mb-2 font-bold text-sm">
+                <i data-lucide="trending-up" class="w-4 h-4"></i>
+                <span>Proactive Momentum</span>
+              </div>
+              <p class="text-xs text-slate-400 leading-relaxed">Goals aren't just wishlists—they are systematically broken into phased milestones and verified daily directives.</p>
+            </div>
+
+            <div class="bg-surface-100 border border-surface-border rounded-2xl p-5 hover:border-purple-500/30 transition">
+              <div class="flex items-center gap-2.5 text-purple-400 mb-2 font-bold text-sm">
+                <i data-lucide="cpu" class="w-4 h-4"></i>
+                <span>Dual Neural Core</span>
+              </div>
+              <p class="text-xs text-slate-400 leading-relaxed">Powered by local Ollama models (Qwen, Gemma, LLaMA) with seamless ultra-fast cloud Groq failover.</p>
+            </div>
+          </div>
+
+          <!-- Tech Specs & Release Info -->
+          <div class="bg-surface-100 border border-surface-border rounded-2xl p-6">
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Platform Architecture</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5">
+                <span class="text-[10px] text-slate-400 block">Version</span>
+                <span class="text-sm font-bold text-white">2.0 Production</span>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5">
+                <span class="text-[10px] text-slate-400 block">Backend</span>
+                <span class="text-sm font-bold text-teal-400">FastAPI Async</span>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5">
+                <span class="text-[10px] text-slate-400 block">Vector RAG</span>
+                <span class="text-sm font-bold text-indigo-400">Nomic Embed</span>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5">
+                <span class="text-[10px] text-slate-400 block">Voice Stream</span>
+                <span class="text-sm font-bold text-amber-400">Zero-Loop TTS</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 8: HELP & FAQ -->
+        <section id="view-faq" class="view-panel hidden h-full overflow-y-auto p-8 max-w-5xl mx-auto">
+          <div class="mb-6">
+            <h2 class="text-xl font-bold text-white">Help Center &amp; Frequently Asked Questions</h2>
+            <p class="text-sm text-slate-400">Everything you need to know about navigating, conversing with, and maximizing AURA.</p>
+          </div>
+
+          <!-- Search Filter -->
+          <div class="mb-6 relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input type="text" id="faq-search-input" placeholder="Search questions (e.g. voice, goals, hotkeys, streak, privacy)..." class="w-full bg-surface-100 border border-surface-border rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500">
+          </div>
+
+          <!-- FAQ Accordions -->
+          <div id="faq-list" class="flex flex-col gap-3">
+            
+            <!-- Category: Voice & Conversations -->
+            <div class="faq-item bg-surface-100 border border-surface-border rounded-xl overflow-hidden transition">
+              <button class="faq-toggle w-full p-4 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-white hover:text-teal-300">
+                <div class="flex items-center gap-2.5">
+                  <i data-lucide="mic" class="w-4 h-4 text-teal-400 shrink-0"></i>
+                  <span>How does hands-free voice chat work?</span>
+                </div>
+                <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+              <div class="faq-content hidden px-4 pb-4 text-xs text-slate-300 leading-relaxed border-t border-white/5 pt-3">
+                Click the microphone icon or tap the <kbd class="px-1.5 py-0.5 rounded bg-surface-200 border border-white/10 text-teal-300 font-mono">Spacebar</kbd> when not typing in an input field. Speak naturally; when you pause, AURA will automatically process your input, reply with empathetic speech synthesis, and temporarily disable the microphone while speaking to eliminate runaway feedback loops.
+              </div>
+            </div>
+
+            <div class="faq-item bg-surface-100 border border-surface-border rounded-xl overflow-hidden transition">
+              <button class="faq-toggle w-full p-4 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-white hover:text-teal-300">
+                <div class="flex items-center gap-2.5">
+                  <i data-lucide="alert-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                  <span>What if my microphone doesn't start or permissions are denied?</span>
+                </div>
+                <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+              <div class="faq-content hidden px-4 pb-4 text-xs text-slate-300 leading-relaxed border-t border-white/5 pt-3">
+                In Chrome or Edge, click the tune/padlock icon on the left side of the URL bar (next to <code class="text-teal-400">http://localhost:8000</code>), select "Site settings", and set <strong>Microphone</strong> to <strong>Allow</strong>. Refresh the page to apply the permissions.
+              </div>
+            </div>
+
+            <!-- Category: Goals & Roadmaps -->
+            <div class="faq-item bg-surface-100 border border-surface-border rounded-xl overflow-hidden transition">
+              <button class="faq-toggle w-full p-4 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-white hover:text-teal-300">
+                <div class="flex items-center gap-2.5">
+                  <i data-lucide="target" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+                  <span>How does AURA generate goals and daily directives?</span>
+                </div>
+                <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+              <div class="faq-content hidden px-4 pb-4 text-xs text-slate-300 leading-relaxed border-t border-white/5 pt-3">
+                When you click "New Goal" and provide your intention, timeline, category, and experience level, AURA's neural engine analyzes your objective and returns a structured roadmap with milestone phases. It simultaneously creates daily directive tasks in your <strong>Directives &amp; Tasks</strong> list so you always have immediate actions for the day.
+              </div>
+            </div>
+
+            <div class="faq-item bg-surface-100 border border-surface-border rounded-xl overflow-hidden transition">
+              <button class="faq-toggle w-full p-4 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-white hover:text-teal-300">
+                <div class="flex items-center gap-2.5">
+                  <i data-lucide="shield" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                  <span>How do Streak Freeze Shields work?</span>
+                </div>
+                <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+              <div class="faq-content hidden px-4 pb-4 text-xs text-slate-300 leading-relaxed border-t border-white/5 pt-3">
+                Streak Freeze Shields protect your daily momentum if you miss a check-in day. If an active goal misses a day, a shield token is consumed to keep your streak intact. If you run out of shields, AURA offers a quick recovery challenge to restore your streak.
+              </div>
+            </div>
+
+            <!-- Category: Privacy & Storage -->
+            <div class="faq-item bg-surface-100 border border-surface-border rounded-xl overflow-hidden transition">
+              <button class="faq-toggle w-full p-4 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-white hover:text-teal-300">
+                <div class="flex items-center gap-2.5">
+                  <i data-lucide="lock" class="w-4 h-4 text-purple-400 shrink-0"></i>
+                  <span>Where is my data stored? Is it confidential?</span>
+                </div>
+                <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+              <div class="faq-content hidden px-4 pb-4 text-xs text-slate-300 leading-relaxed border-t border-white/5 pt-3">
+                AURA is designed as a local-first platform. All user accounts, chat logs, goals, and uploaded artifacts are stored locally on your machine in the SQLite database and local artifact folders. Document searches are executed locally via vector RAG.
+              </div>
+            </div>
+
+            <!-- Category: Shortcuts -->
+            <div class="faq-item bg-surface-100 border border-surface-border rounded-xl overflow-hidden transition">
+              <button class="faq-toggle w-full p-4 text-left flex items-center justify-between text-xs sm:text-sm font-semibold text-white hover:text-teal-300">
+                <div class="flex items-center gap-2.5">
+                  <i data-lucide="command" class="w-4 h-4 text-rose-400 shrink-0"></i>
+                  <span>What are the system keyboard shortcuts?</span>
+                </div>
+                <i data-lucide="chevron-down" class="faq-chevron w-4 h-4 text-slate-400 transition-transform"></i>
+              </button>
+              <div class="faq-content hidden px-4 pb-4 text-xs text-slate-300 leading-relaxed border-t border-white/5 pt-3">
+                <div class="grid grid-cols-2 gap-2 mt-1">
+                  <div class="p-2 rounded bg-surface-200/80 border border-white/5"><kbd class="text-teal-300 font-mono">Spacebar</kbd> - Tap to Speak / Voice chat</div>
+                  <div class="p-2 rounded bg-surface-200/80 border border-white/5"><kbd class="text-teal-300 font-mono">Ctrl + K</kbd> - Start New Conversation</div>
+                  <div class="p-2 rounded bg-surface-200/80 border border-white/5"><kbd class="text-teal-300 font-mono">Enter</kbd> - Send Chat Message</div>
+                  <div class="p-2 rounded bg-surface-200/80 border border-white/5"><kbd class="text-teal-300 font-mono">Esc</kbd> - Close Modal Windows</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- VIEW 9: CONTACT US -->
+        <section id="view-contact" class="view-panel hidden h-full overflow-y-auto p-8 max-w-5xl mx-auto">
+          <div class="mb-6">
+            <h2 class="text-xl font-bold text-white">Contact &amp; Operations Support</h2>
+            <p class="text-sm text-slate-400">Reach out to the AURA Operations team for questions, feedback, or system assistance.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+            
+            <!-- Contact Form (3 cols) -->
+            <div class="md:col-span-3 bg-surface-100 border border-surface-border rounded-2xl p-6">
+              <h3 class="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                <i data-lucide="mail" class="w-4 h-4 text-teal-400"></i>
+                <span>Direct Dispatch Form</span>
+              </h3>
+              <p class="text-xs text-slate-400 mb-5">Submit your message directly to our engineering desk.</p>
+
+              <form id="form-contact-us" class="flex flex-col gap-3.5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Full Name</label>
+                    <input type="text" id="contact-name" placeholder="Your name" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Email Address</label>
+                    <input type="email" id="contact-email" placeholder="you@domain.com" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Subject / Category</label>
+                  <select id="contact-subject" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    <option>General Inquiries &amp; Feedback</option>
+                    <option>Technical Support &amp; Bug Report</option>
+                    <option>Feature Suggestion</option>
+                    <option>Enterprise &amp; Multi-Agent Integration</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Message</label>
+                  <textarea id="contact-message" rows="4" placeholder="Describe your question or feedback in detail..." required class="w-full bg-surface-200 border border-surface-border rounded-xl p-3 text-xs text-white focus:outline-none focus:border-teal-500 resize-none"></textarea>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-bold text-xs transition shadow-md shadow-teal-500/20 cursor-pointer">
+                  Dispatch Message ➔
+                </button>
+                <p id="contact-status-msg" class="text-xs text-center min-h-[1.2rem]"></p>
+              </form>
+            </div>
+
+            <!-- Operations Details (2 cols) -->
+            <div class="md:col-span-2 flex flex-col gap-4">
+              
+              <div class="bg-surface-100 border border-surface-border rounded-2xl p-5">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3">Direct Channels</h4>
+                <div class="flex flex-col gap-3 text-xs">
+                  <div class="flex items-center gap-3 text-slate-300">
+                    <div class="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-400 shrink-0">
+                      <i data-lucide="mail" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                      <span class="text-[10px] text-slate-500 block">Support Desk</span>
+                      <span class="font-mono text-white">support@aura.internal</span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-3 text-slate-300">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0">
+                      <i data-lucide="message-circle" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                      <span class="text-[10px] text-slate-500 block">Operator Community</span>
+                      <span class="text-indigo-300">discord.gg/aura-ops</span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-3 text-slate-300">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
+                      <i data-lucide="map-pin" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                      <span class="text-[10px] text-slate-500 block">Neural Ops Center</span>
+                      <span class="text-white">Floor 10, Autonomous Quad</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-gradient-to-br from-surface-100 to-indigo-950/20 border border-surface-border rounded-2xl p-5">
+                <h4 class="text-xs font-bold text-white mb-2 flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>System Reliability</span>
+                </h4>
+                <p class="text-xs text-slate-400 leading-relaxed mb-3">
+                  All local endpoints and background RAG indexing engines are actively monitored.
+                </p>
+                <div class="text-[11px] text-slate-400 space-y-1">
+                  <div class="flex justify-between"><span>FastAPI Host:</span> <span class="text-emerald-400 font-mono">127.0.0.1:8000</span></div>
+                  <div class="flex justify-between"><span>Vector Engine:</span> <span class="text-teal-400 font-mono">Active (Local)</span></div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </section>
+
+        <!-- VIEW 9: OPERATOR PROFILE & DOSSIER -->
+        <section id="view-profile" class="view-panel hidden h-full overflow-y-auto px-6 max-w-6xl mx-auto scroll-smooth py-6">
+          
+          <!-- Profile Dossier Hero Banner -->
+          <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-surface-100 via-surface-100 to-indigo-950/30 border border-surface-border p-6 sm:p-8 shadow-2xl mb-6">
+            <!-- Background Cyber Grid Accent -->
+            <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="relative flex flex-col md:flex-row items-center md:items-start gap-6">
+              
+              <!-- Avatar Circle with Upload Trigger Overlay -->
+              <div class="relative group shrink-0">
+                <div id="profile-dossier-avatar-container" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-teal-500/40 shadow-xl shadow-teal-500/20 bg-surface-200 overflow-hidden flex items-center justify-center text-3xl font-extrabold text-teal-300 uppercase transition-all duration-300 group-hover:border-teal-400">
+                  <span id="profile-avatar-fallback">U</span>
+                  <img id="profile-avatar-img" src="" alt="Avatar" class="w-full h-full object-cover hidden">
+                </div>
+                <!-- Hover Upload Button -->
+                <button type="button" onclick="document.getElementById('profile-photo-file-input').click()" title="Upload / Change Profile Photo" class="absolute inset-0 rounded-full bg-black/60 backdrop-blur-xs text-white opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 cursor-pointer">
+                  <i data-lucide="camera" class="w-5 h-5 text-teal-400"></i>
+                  <span class="text-[10px] font-bold tracking-tight">Change</span>
+                </button>
+                <input type="file" id="profile-photo-file-input" accept="image/*" class="hidden">
+              </div>
+
+              <!-- Operator Identity Details -->
+              <div class="flex-1 text-center md:text-left min-w-0">
+                <div class="flex flex-wrap items-center justify-center md:justify-start gap-2.5 mb-1.5">
+                  <h2 id="profile-hero-fullname" class="text-2xl sm:text-3xl font-black text-white tracking-tight">Operator</h2>
+                  <span id="profile-hero-role-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-teal-500/15 border border-teal-500/30 text-teal-300">
+                    OPERATOR
+                  </span>
+                  <span id="profile-hero-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>ACTIVE</span>
+                  </span>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-slate-400 mb-3 font-mono">
+                  <span class="flex items-center gap-1.5 text-teal-400">
+                    <i data-lucide="at-sign" class="w-3.5 h-3.5"></i>
+                    <span id="profile-hero-username">operator</span>
+                  </span>
+                  <span class="flex items-center gap-1.5">
+                    <i data-lucide="mail" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <span id="profile-hero-email" class="text-slate-300">Not provided</span>
+                  </span>
+                  <span class="flex items-center gap-1.5">
+                    <i data-lucide="phone" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <span id="profile-hero-phone" class="text-slate-300">Not provided</span>
+                  </span>
+                  <span class="flex items-center gap-1.5">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <span id="profile-hero-dob" class="text-slate-300">DOB not set</span>
+                  </span>
+                </div>
+
+                <p id="profile-hero-bio" class="text-xs text-slate-300 leading-relaxed italic max-w-2xl">
+                  "Autonomous operations practitioner leveraging real-time neural workflows."
+                </p>
+
+                <div id="profile-hero-address-box" class="mt-2 text-xs text-slate-400 flex items-center justify-center md:justify-start gap-1.5">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-teal-400 shrink-0"></i>
+                  <span id="profile-hero-address" class="truncate">Station / Address not specified</span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Telemetry Metrics Strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-6 pt-6 border-t border-surface-border">
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5 flex flex-col">
+                <span class="text-[10px] text-slate-400 uppercase font-semibold">Active Goals</span>
+                <span id="profile-stat-goals" class="text-lg font-black text-indigo-400 mt-1">0</span>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5 flex flex-col">
+                <span class="text-[10px] text-slate-400 uppercase font-semibold">Directives Done</span>
+                <span id="profile-stat-completed" class="text-lg font-black text-emerald-400 mt-1">0</span>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5 flex flex-col">
+                <span class="text-[10px] text-slate-400 uppercase font-semibold">Pending Tasks</span>
+                <span id="profile-stat-pending" class="text-lg font-black text-amber-400 mt-1">0</span>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5 flex flex-col">
+                <span class="text-[10px] text-slate-400 uppercase font-semibold">Peak Day Streak</span>
+                <span id="profile-stat-streak" class="text-lg font-black text-teal-400 mt-1">0 Days</span>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-200/60 border border-white/5 flex flex-col col-span-2 sm:col-span-1">
+                <span class="text-[10px] text-slate-400 uppercase font-semibold">Freeze Shields</span>
+                <span id="profile-stat-shields" class="text-lg font-black text-purple-400 mt-1">0</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Two-Column Information and Settings Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            
+            <!-- Left Column: Personal Information & Profile Form (3 cols) -->
+            <div class="lg:col-span-3 bg-surface-100 border border-surface-border rounded-2xl p-6 shadow-xl">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-lucide="user-check" class="w-4 h-4 text-teal-400"></i>
+                    <span>Operator Identity &amp; Details</span>
+                  </h3>
+                  <p class="text-xs text-slate-400">Modify your personal particulars and communication coordinates.</p>
+                </div>
+                <button type="button" onclick="document.getElementById('profile-photo-file-input').click()" class="px-3 py-1.5 rounded-lg bg-surface-200 hover:bg-white/10 border border-surface-border text-xs text-teal-300 font-medium transition flex items-center gap-1.5 cursor-pointer">
+                  <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                  <span>Upload Photo</span>
+                </button>
+              </div>
+
+              <form id="form-profile-details" class="flex flex-col gap-4">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Full Name</label>
+                    <input type="text" id="prof-input-fullname" placeholder="e.g. John Doe" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Operator Username</label>
+                    <input type="text" id="prof-input-username" disabled class="w-full bg-surface-200/50 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-slate-400 cursor-not-allowed">
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Email Address</label>
+                    <input type="email" id="prof-input-email" placeholder="operator@domain.com" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Phone Number</label>
+                    <input type="tel" id="prof-input-phone" placeholder="+1 (555) 019-2834" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Date of Birth</label>
+                    <input type="date" id="prof-input-dob" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Profile Picture URL</label>
+                    <input type="text" id="prof-input-avatar-url" placeholder="https://... or upload photo above" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Station / Physical Address</label>
+                  <textarea id="prof-input-address" rows="2" placeholder="Street Address, City, State/Province, Country" class="w-full bg-surface-200 border border-surface-border rounded-xl p-3 text-xs text-white focus:outline-none focus:border-teal-500 resize-none"></textarea>
+                </div>
+
+                <div>
+                  <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Bio / Specialty Role Description</label>
+                  <textarea id="prof-input-bio" rows="2" placeholder="Brief statement regarding your technical focus or objectives..." class="w-full bg-surface-200 border border-surface-border rounded-xl p-3 text-xs text-white focus:outline-none focus:border-teal-500 resize-none"></textarea>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                  <span id="prof-save-status" class="text-xs min-h-[1.2rem]"></span>
+                  <button type="submit" id="btn-save-profile" class="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-bold text-xs transition shadow-md shadow-teal-500/20 cursor-pointer flex items-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i>
+                    <span>Save Changes</span>
+                  </button>
+                </div>
+
+              </form>
+            </div>
+
+            <!-- Right Column: Password Management & Telemetry (2 cols) -->
+            <div class="lg:col-span-2 flex flex-col gap-6">
+              
+              <!-- Change Password Box -->
+              <div class="bg-surface-100 border border-surface-border rounded-2xl p-6 shadow-xl">
+                <h3 class="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                  <i data-lucide="key-round" class="w-4 h-4 text-indigo-400"></i>
+                  <span>Security &amp; Password</span>
+                </h3>
+                <p class="text-xs text-slate-400 mb-4">Update your credentials to safeguard operator access.</p>
+
+                <form id="form-change-password" class="flex flex-col gap-3">
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Current Password</label>
+                    <input type="password" id="pwd-current" placeholder="••••••••" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">New Password</label>
+                    <input type="password" id="pwd-new" placeholder="••••••••" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+
+                  <div>
+                    <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Confirm New Password</label>
+                    <input type="password" id="pwd-confirm" placeholder="••••••••" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                  </div>
+
+                  <button type="submit" id="btn-update-password" class="w-full py-2.5 mt-1 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold text-xs transition shadow-md cursor-pointer flex items-center justify-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                    <span>Update Password</span>
+                  </button>
+                  <p id="pwd-status-msg" class="text-xs text-center min-h-[1.2rem]"></p>
+                </form>
+              </div>
+
+              <!-- Metadata & Station Diagnostics -->
+              <div class="bg-gradient-to-br from-surface-100 to-surface-200/90 border border-surface-border rounded-2xl p-5 shadow-xl">
+                <h4 class="text-xs font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <i data-lucide="cpu" class="w-3.5 h-3.5 text-teal-400"></i>
+                  <span>System Diagnostics</span>
+                </h4>
+                <div class="text-[11px] text-slate-400 space-y-2 font-mono">
+                  <div class="flex justify-between items-center py-1 border-b border-surface-border/50">
+                    <span>Operator ID:</span>
+                    <span id="profile-meta-id" class="text-white font-bold">#--</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1 border-b border-surface-border/50">
+                    <span>Commissioned:</span>
+                    <span id="profile-meta-created" class="text-slate-300">--</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1 border-b border-surface-border/50">
+                    <span>Access Tier:</span>
+                    <span id="profile-meta-role" class="text-teal-400 font-bold uppercase">OPERATOR</span>
+                  </div>
+                  <div class="flex justify-between items-center py-1">
+                    <span>Security Engine:</span>
+                    <span class="text-emerald-400">PBKDF2-HMAC-SHA256</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+      <!-- Floating Scroll-To-Top Button (Effortless upward scrolling) -->
+      <button id="btn-scroll-top" title="Scroll upward to top" class="fixed bottom-6 right-6 z-30 p-2.5 rounded-full bg-surface-100/90 border border-teal-500/30 text-teal-400 shadow-xl hover:bg-teal-500 hover:text-surface-200 transition-all duration-300 opacity-0 pointer-events-none cursor-pointer">
+        <i data-lucide="arrow-up" class="w-4 h-4"></i>
+      </button>
+
+    </main>
+
+  </div>
+
+  <!-- Modal: Define New Goal -->
+  <div id="modal-goal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="bg-surface-100 border border-surface-border w-full max-w-md rounded-2xl p-6 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-white text-base">Define New Strategic Goal</h3>
+        <button onclick="closeGoalModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <form id="form-new-goal" class="flex flex-col gap-3.5">
+        <div>
+          <label class="text-xs font-semibold text-slate-400 mb-1 block">Objective / Intention</label>
+          <input type="text" id="goal-intent" placeholder="e.g. Master full-stack Python development" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="text-xs font-semibold text-slate-400 mb-1 block">Category</label>
+            <select id="goal-cat" class="w-full bg-surface-200 border border-surface-border rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+              <option>Career</option>
+              <option>Learning</option>
+              <option>Health</option>
+              <option>Finance</option>
+              <option>Productivity</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400 mb-1 block">Duration</label>
+            <select id="goal-dur" class="w-full bg-surface-200 border border-surface-border rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+              <option>30 Days</option>
+              <option>7 Days</option>
+              <option>90 Days</option>
+              <option>6 Months</option>
+              <option>1 Year</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-semibold text-slate-400 mb-1 block">Experience</label>
+            <select id="goal-exp" class="w-full bg-surface-200 border border-surface-border rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+              <option>Beginner</option>
+              <option>Intermediate</option>
+              <option>Advanced</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="btn-submit-goal" class="w-full py-2.5 mt-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-semibold text-sm transition">Generate AI Roadmap ➔</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Authentication Gateway (Sign In & Register) -->
+  <div id="modal-auth" class="fixed inset-0 z-50 bg-surface-200/90 backdrop-blur-xl hidden items-center justify-center p-4">
+    <div id="modal-auth-container" class="bg-surface-100 border border-surface-border w-full max-w-sm rounded-2xl p-6 shadow-2xl text-center relative max-h-[92vh] overflow-y-auto transition-all duration-300">
+      <!-- Close button to return to Landing -->
+      <button id="btn-close-auth-modal" title="Back to Welcome Page" class="absolute top-4 right-4 text-slate-400 hover:text-white transition">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-500 to-indigo-500 mx-auto flex items-center justify-center shadow-lg shadow-teal-500/20 mb-3">
+        <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+      </div>
+      <h2 class="text-lg font-bold text-white mb-1">AURA Gateway</h2>
+      <p class="text-xs text-slate-400 mb-4">Authenticate to synchronize your goals and intelligence engine.</p>
+
+      <!-- Tab Switcher -->
+      <div class="flex border-b border-surface-border mb-4">
+        <button type="button" id="tab-auth-login" class="flex-1 py-2 text-xs font-bold border-b-2 border-teal-500 text-teal-400 transition">Sign In</button>
+        <button type="button" id="tab-auth-register" class="flex-1 py-2 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-white transition">Create Account</button>
+      </div>
+
+      <!-- Sign In Form -->
+      <form id="form-auth" class="flex flex-col gap-3">
+        <input type="text" id="auth-username" placeholder="Username (admin or john)" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500">
+        <input type="password" id="auth-password" placeholder="Password (admin123 or operator123)" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500">
+        
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-surface-200 font-bold text-sm transition shadow-lg shadow-teal-500/20 cursor-pointer">Sign In ➔</button>
+        <p id="auth-error-msg" class="text-xs text-rose-400 min-h-[1rem]"></p>
+      </form>
+
+      <!-- Register Form -->
+      <form id="form-register" class="hidden flex flex-col gap-3 text-left">
+        
+        <!-- Profile Photo Upload & Preview -->
+        <div class="flex flex-col items-center justify-center mb-1">
+          <div id="reg-avatar-preview-box" onclick="document.getElementById('reg-avatar-input').click()" class="w-20 h-20 rounded-full border-2 border-dashed border-teal-500/50 hover:border-teal-400 bg-surface-200/90 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition relative group shadow-inner">
+            <img id="reg-avatar-preview-img" class="w-full h-full object-cover hidden" alt="Avatar Preview">
+            <div id="reg-avatar-placeholder" class="flex flex-col items-center text-center p-1 group-hover:scale-105 transition-transform">
+              <i data-lucide="camera" class="w-5 h-5 text-teal-400 mb-0.5"></i>
+              <span class="text-[9px] text-slate-400 font-medium">Add Photo</span>
+            </div>
+          </div>
+          <input type="file" id="reg-avatar-input" accept="image/*" class="hidden">
+          <span class="text-[10px] text-slate-400 mt-1">Profile Photo (Optional)</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Username <span class="text-rose-400">*</span></label>
+            <input type="text" id="reg-username" placeholder="e.g. alexander" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Full Name <span class="text-rose-400">*</span></label>
+            <input type="text" id="reg-fullname" placeholder="e.g. Alex Mercer" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Email ID <span class="text-rose-400">*</span></label>
+            <input type="email" id="reg-email" placeholder="alex@domain.com" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Phone Number</label>
+            <input type="tel" id="reg-phone" placeholder="+1 (555) 000-1122" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Date of Birth</label>
+            <input type="date" id="reg-dob" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Physical / Station Address</label>
+            <input type="text" id="reg-address" placeholder="City, Country" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Password <span class="text-rose-400">*</span></label>
+            <input type="password" id="reg-password" placeholder="••••••••" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Confirm Password <span class="text-rose-400">*</span></label>
+            <input type="password" id="reg-password-confirm" placeholder="••••••••" required class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 mb-1 block">Role / Specialty Note</label>
+          <input type="text" id="reg-bio" placeholder="e.g. AI Research Engineer / Full-Stack" class="w-full bg-surface-200 border border-surface-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+        </div>
+
+        <button type="submit" class="w-full py-2.5 mt-1 rounded-xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-bold text-xs transition shadow-md cursor-pointer">Register Operator ➔</button>
+        <p id="reg-status-msg" class="text-xs text-slate-300 min-h-[1rem] text-center"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

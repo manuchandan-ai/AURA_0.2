@@ -2,33 +2,143 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>AURA // Neural Core OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA // J.A.R.V.I.S. Neural Core OS</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Three.js CDN for 3D Singularity WebGL -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Three.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <!-- Interactive 3D WebGL Canvas Layer -->
-  <div id="webgl-canvas-container"></div>
+  <!-- 3D ThreeJS Holographic Reactor Canvas -->
+  <div id="reactor-canvas-container"></div>
 
-  <!-- Glassmorphic Dashboard Layout -->
-  <div class="app-layout">
-    <nav class="sidebar">
-      <div class="brand">⚛️ AURA CORE</div>
-      <div class="nav-links">
-        <button class="nav-item active" data-view="dashboard">Home Terminal</button>
-        <button class="nav-item" data-view="chat">Reasoning Console</button>
-        <button class="nav-item" data-view="goals">Strategic Roadmaps</button>
-        <button class="nav-item" data-view="artifacts">Artifact Vault</button>
-      </div>
-      <div class="operator-profile">
-        <span id="user-badge">Operator: Guest</span>
-      </div>
-    </nav>
+  <!-- HUD Grid & CRT Scanline Overlay -->
+  <div class="hud-overlay"></div>
 
-    <main class="content-surface" id="view-container">
-      <!-- Dynamic Views Inject Here -->
-    </main>
+  <!-- Primary Interface Matrix -->
+  <div class="jarvis-interface">
+    
+    <!-- Top Telemetry Ribbon -->
+    <header class="hud-header">
+      <div class="header-left">
+        <span class="hud-logo">⚛️ AURA : J.A.R.V.I.S.</span>
+        <span class="hud-badge" id="hud-status">SYSTEM READY</span>
+      </div>
+      <div class="header-center">
+        <div class="hud-clock" id="hud-clock">00:00:00 UTC</div>
+      </div>
+      <div class="header-right">
+        <span class="stat-pill">CORE: <b id="stat-engine">GROQ-120B</b></span>
+        <span class="stat-pill">SHIELDS: <b id="stat-shields">0</b></span>
+        <span class="stat-pill" id="stat-user-badge">OPERATOR: GUEST</span>
+      </div>
+    </header>
+
+    <!-- Main Workspace Surface -->
+    <div class="workspace-deck">
+      
+      <!-- Left Diagnostics Deck -->
+      <aside class="hud-panel left-panel">
+        <div class="panel-header">DIAGNOSTICS & TELEMETRY</div>
+        
+        <div class="stat-gauge-group">
+          <div class="stat-item">
+            <span>NEURAL SYNC</span>
+            <div class="progress-bar"><div class="fill" style="width: 98%;"></div></div>
+          </div>
+          <div class="stat-item">
+            <span>VECTOR DB (nomic-embed)</span>
+            <div class="progress-bar"><div class="fill" style="width: 100%;"></div></div>
+          </div>
+          <div class="stat-item">
+            <span>MOMENTUM PRESERVATION</span>
+            <div class="progress-bar"><div class="fill" style="width: 85%;"></div></div>
+          </div>
+        </div>
+
+        <div class="panel-header" style="margin-top:20px;">ACTIVE OBJECTIVES</div>
+        <div id="hud-goals-list" class="scroll-list">
+          <em>No verified objectives linked.</em>
+        </div>
+
+        <div class="panel-header" style="margin-top:20px;">SYSTEM DIRECTIVES</div>
+        <div id="hud-reminders-list" class="scroll-list">
+          <em>Zero directives pending.</em>
+        </div>
+      </aside>
+
+      <!-- Center Holographic Stage -->
+      <main class="center-stage">
+        
+        <!-- Voice Orb Action Trigger -->
+        <div class="reactor-action-cluster">
+          <div class="reactor-status-text" id="voice-indicator">CLICK REACTOR OR PRESS [SPACE] TO SPEAK</div>
+          <button id="btn-voice-toggle" class="btn-arc-trigger">
+            <span class="arc-pulse"></span>
+            🎙️ INITIATE J.A.R.V.I.S.
+          </button>
+        </div>
+
+        <!-- Terminal Chat Output -->
+        <div class="terminal-deck">
+          <div class="terminal-log" id="terminal-stream">
+            <div class="log-entry jarvis">
+              <span class="sender">J.A.R.V.I.S.</span>
+              <span class="text">At your service, Sir. Audio sensors and failover intelligence layers are online. How may I assist your trajectory today?</span>
+            </div>
+          </div>
+
+          <!-- Bottom Command Console -->
+          <div class="command-bar-wrapper">
+            <input type="text" id="cmd-input" placeholder="Type a directive or ask J.A.R.V.I.S..." autocomplete="off">
+            <button id="cmd-send-btn">EXECUTE ➔</button>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- Right Control Matrix -->
+      <aside class="hud-panel right-panel">
+        <div class="panel-header">EXECUTIVE CONTROLS</div>
+        
+        <div class="action-btn-group">
+          <button class="hud-btn" id="btn-morning-briefing">🔊 AUDIO MORNING BRIEFING</button>
+          <button class="hud-btn" id="btn-claim-shield">🛡️ REQUISITION FREEZE SHIELD</button>
+          <button class="hud-btn" id="btn-export-backup">💾 EXPORT SECURE WORKSPACE</button>
+          <button class="hud-btn danger" id="btn-session-kill">⏻ TERMINATE SESSION</button>
+        </div>
+
+        <div class="panel-header" style="margin-top:20px;">OPERATOR DOSSIER</div>
+        <div class="dossier-card" id="operator-dossier">
+          <p><strong>Identity:</strong> <span id="dos-user">-</span></p>
+          <p><strong>Privileges:</strong> <span id="dos-role">-</span></p>
+          <p><strong>Access Level:</strong> AUTHORIZED</p>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+
+  <!-- Biometric Access Gateway Modal -->
+  <div class="auth-matrix-backdrop" id="auth-modal">
+    <div class="auth-matrix-card">
+      <div class="hologram-seal">⚛️</div>
+      <h2>AURA // BIOMETRIC GATEWAY</h2>
+      <p class="auth-subtitle">IDENTIFICATION CREDENTIALS REQUIRED</p>
+
+      <form id="auth-form">
+        <div class="input-glow">
+          <input type="text" id="auth-user" placeholder="OPERATOR USERNAME" required autocomplete="off">
+        </div>
+        <div class="input-glow">
+          <input type="password" id="auth-pwd" placeholder="SECURITY CIPHER" required>
+        </div>
+        <button type="submit" class="auth-btn">VERIFY IDENTITY ➔</button>
+        <p class="auth-error-log" id="auth-error"></p>
+      </form>
+    </div>
   </div>
 
   <script src="app.js"></script>

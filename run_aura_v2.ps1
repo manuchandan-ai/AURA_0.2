@@ -1,8 +1,10 @@
-﻿# ==============================================================================
+# ==============================================================================
 #  AURA - Adaptive Unified Reasoning Assistant
 #  Production Orchestration & Self-Healing Bootstrapper
 # ==============================================================================
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 $Host.UI.RawUI.WindowTitle = "AURA Master Control Plane"
 Clear-Host
 
@@ -11,7 +13,8 @@ Write-Host "       ⚛️  AURA INTELLIGENCE PLATFORM BOOTSTRAPPER         " -Fo
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$AURA_DIR = "D:\aura"
+$AURA_DIR = $PSScriptRoot
+if (-not $AURA_DIR) { $AURA_DIR = "D:\aura_1.0\aura_1.0" }
 Set-Location -Path $AURA_DIR
 
 # ------------------------------------------------------------------------------
@@ -52,7 +55,7 @@ if (-not (Test-Path $STORAGE_PATH)) {
 Write-Host "[3/6] Validating SQLite database schema and foreign keys..." -ForegroundColor Yellow
 python -c "
 import sqlite3, os
-db_path = 'D:/aura/aura.db'
+db_path = 'aura.db'
 if os.path.exists(db_path):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
@@ -91,10 +94,10 @@ try {
 # 5. START FASTAPI BACKEND (DETACHED PROCESS)
 # ------------------------------------------------------------------------------
 Write-Host "[5/6] Booting FastAPI neural engine on port 8000..." -ForegroundColor Yellow
-$BackendProcess = Start-Process -FilePath "python" -ArgumentList "-m uvicorn main:app --port 8000" -PassThru -NoNewWindow
+$BackendProcess = Start-Process -FilePath "python" -ArgumentList "-m uvicorn main:app --port 8000 --reload" -PassThru -NoNewWindow
 
 # Wait for backend health poll
-$maxRetries = 20
+$maxRetries = 40
 $isHealthy = $false
 Write-Host "      Awaiting backend health synchronization..." -NoNewline
 
@@ -113,7 +116,7 @@ for ($i = 0; $i -lt $maxRetries; $i++) {
 Write-Host ""
 
 if (-not $isHealthy) {
-    Write-Host "      [ERROR] FastAPI failed to report healthy within 12 seconds." -ForegroundColor Red
+    Write-Host "      [ERROR] FastAPI failed to report healthy within 24 seconds." -ForegroundColor Red
     Write-Host "      Stopping process $BackendProcess.Id" -ForegroundColor Red
     Stop-Process -Id $BackendProcess.Id -Force
     Exit 1
@@ -122,22 +125,24 @@ if (-not $isHealthy) {
 Write-Host "      FastAPI engine online and answering on http://127.0.0.1:8000." -ForegroundColor Green
 
 # ------------------------------------------------------------------------------
-# 6. START STREAMLIT FRONTEND & LAUNCH BROWSER
+# 6. OPEN UNIFIED AURA WEB APPLICATION & MONITOR
 # ------------------------------------------------------------------------------
-Write-Host "[6/6] Launching Streamlit glassmorphic dashboard on port 8501..." -ForegroundColor Yellow
+Write-Host "[6/6] Launching Unified AURA Neural Interface on port 8000..." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host "  ✅ ALL AURA SUBSYSTEMS NOMINAL                          " -ForegroundColor Green
-Write-Host "  👉 Access Portal: http://localhost:8501                " -ForegroundColor White
-Write-Host "  👉 Admin Account: admin / admin123                     " -ForegroundColor White
-Write-Host "  👉 Operator Account: john / operator123               " -ForegroundColor White
-Write-Host "  (Press Ctrl+C to terminate both servers)               " -ForegroundColor DarkGray
+Write-Host "  👉 Modern Web App:    http://localhost:8000            " -ForegroundColor Cyan
+Write-Host "  👉 Default Accounts:  admin/admin123 | john/operator123" -ForegroundColor DarkGray
+Write-Host "  (Press Ctrl+C to terminate platform)                   " -ForegroundColor DarkGray
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Automatically open only the unified web app in default browser
+Start-Process "http://localhost:8000"
+
 try {
-    # Launch Streamlit in foreground so logs stream directly here
-    streamlit run app.py --server.port 8501 --server.headless false
+    # Keep orchestrator running and monitor backend
+    Wait-Process -Id $BackendProcess.Id
 } finally {
     Write-Host "`nShutting down backend process (PID: $($BackendProcess.Id))..." -ForegroundColor Yellow
     Stop-Process -Id $BackendProcess.Id -Force -ErrorAction SilentlyContinue

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿import os
+=======
+import os
+>>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 from datetime import datetime, date
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, Date, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
@@ -12,11 +16,13 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
+    full_name = Column(String(100), nullable=True)
     email = Column(String(120), unique=True, index=True, nullable=True)
     phone = Column(String(25), nullable=True)
+    dob = Column(String(30), nullable=True)
     address = Column(String(255), nullable=True)
     bio = Column(Text, nullable=True)
-    profile_pic = Column(String(255), nullable=True)
+    profile_pic = Column(Text, nullable=True)
     password_hash = Column(String(256), nullable=False)
     salt = Column(String(64), nullable=True)
     role = Column(String(20), default="operator")  # "admin" | "operator"
@@ -49,9 +55,11 @@ class Goal(Base):
     recovery_task = Column(String, nullable=True)
     last_check_in_date = Column(Date, nullable=True)
     progress_percentage = Column(Integer, default=0)
+    daily_routine = Column(Text, nullable=True)
 
     user = relationship("User", back_populates="goals")
     milestones = relationship("Milestone", back_populates="goal", cascade="all, delete-orphan")
+    reminders = relationship("Reminder", back_populates="goal", cascade="all, delete-orphan")
 
 class Milestone(Base):
     __tablename__ = "milestones"
@@ -66,12 +74,15 @@ class Reminder(Base):
     __tablename__ = "reminders"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), default=1)
+    goal_id = Column(Integer, ForeignKey("goals.id"), nullable=True)
     task_text = Column(String, nullable=False)
     priority = Column(String, default="Medium")
     due_info = Column(String, default="Today")
     is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="reminders")
+    goal = relationship("Goal", back_populates="reminders")
 
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -79,6 +90,7 @@ class Conversation(Base):
     user_id = Column(Integer, ForeignKey("users.id"), default=1)
     role = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    session_id = Column(String(50), nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="conversations")
