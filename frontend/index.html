@@ -144,3 +144,149 @@
   <script src="app.js"></script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA // Neural OS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;600&family=Geist:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <!-- 3D Monochrome Wireframe Sphere Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Subtle noise layer for textured brutalist look -->
+  <div class="noise-overlay"></div>
+
+  <div class="app-shell">
+    <!-- Top Bar -->
+    <header class="top-bar glass">
+      <div class="brand">
+        <span class="brand-glyph">✦</span>
+        <span class="brand-title">AURA</span>
+        <span class="version-tag">2.5-MINIMAL</span>
+      </div>
+      <div class="header-metrics">
+        <span class="metric">STATUS <b id="system-status">IDLE</b></span>
+        <span class="metric">SESSION <b id="session-display">--</b></span>
+        <button id="auth-trigger-btn" class="pill-btn">AUTH</button>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="grid-layout">
+      <!-- Left: Telemetry & Goals -->
+      <section class="card glass left-column">
+        <div class="card-header">
+          <span>01 // DIRECTIVES</span>
+          <span class="dot"></span>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
+            <span class="label">STREAK</span>
+            <span class="val" id="stat-streak">0d</span>
+          </div>
+          <div class="stat-box">
+            <span class="label">SHIELDS</span>
+            <span class="val" id="stat-shields">0</span>
+          </div>
+        </div>
+
+        <div class="section-title">ACTIVE TARGETS</div>
+        <div id="goals-list" class="scroll-stack">
+          <p class="placeholder-text">No objectives configured.</p>
+        </div>
+
+        <div class="section-title">TODAY'S TASKS</div>
+        <div id="reminders-list" class="scroll-stack">
+          <p class="placeholder-text">All directives cleared.</p>
+        </div>
+      </section>
+
+      <!-- Center: 3D Holographic Core & Streaming Console -->
+      <section class="center-column">
+        <div class="visualizer-hud">
+          <button id="mic-trigger" class="hud-circle-btn">
+            <span class="btn-crosshair"></span>
+            <span id="mic-label">VOICE</span>
+          </button>
+          <p id="voice-hint" class="hint-text">CLICK TO INITIALIZE AUDIO SENSORS</p>
+        </div>
+
+        <div class="terminal-card glass">
+          <div class="terminal-bar">
+            <span>TERMINAL OUTPUT</span>
+            <span id="typing-indicator" class="typing-dot"></span>
+          </div>
+          <div class="terminal-body" id="chat-stream-box">
+            <div class="msg aura">
+              <span class="role">AURA</span>
+              <p class="content">System operational. Ready for instructions.</p>
+            </div>
+          </div>
+          <div class="terminal-input-bar">
+            <input type="text" id="user-prompt-input" placeholder="Type a directive, prompt, or command..." autocomplete="off">
+            <button id="send-prompt-btn" class="send-btn">SEND ↵</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Documents / Ingestion / Admin Controls -->
+      <section class="card glass right-column">
+        <div class="card-header">
+          <span>02 // KNOWLEDGE</span>
+          <span class="dot"></span>
+        </div>
+
+        <div class="upload-zone" id="drop-area">
+          <input type="file" id="file-uploader" style="display: none;">
+          <label for="file-uploader" class="upload-label">
+            <span class="upload-glyph">+</span>
+            <span>INGEST KNOWLEDGE</span>
+            <small>TEXT, MD, JSON, PY</small>
+          </label>
+        </div>
+
+        <div class="section-title">INDEXED ARTIFACTS</div>
+        <div id="artifacts-list" class="scroll-stack">
+          <p class="placeholder-text">No files indexed.</p>
+        </div>
+
+        <div class="button-group">
+          <button id="btn-audio-briefing" class="action-btn">LISTEN TO BRIEFING</button>
+          <button id="btn-export-vault" class="action-btn">EXPORT WORKSPACE</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Minimal Biometric/Auth Modal -->
+  <div class="modal-backdrop" id="auth-modal" style="display: none;">
+    <div class="modal-card glass">
+      <div class="modal-header">
+        <h3>OPERATOR ACCESS</h3>
+        <button id="close-modal-btn" class="close-x">✕</button>
+      </div>
+      <form id="login-form">
+        <div class="field">
+          <label>HANDLE</label>
+          <input type="text" id="auth-username" required autocomplete="off" placeholder="username">
+        </div>
+        <div class="field">
+          <label>KEY</label>
+          <input type="password" id="auth-password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="submit-auth-btn">VERIFY IDENTITY</button>
+        <p id="auth-error-msg" class="error-msg"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

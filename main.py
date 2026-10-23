@@ -1,12 +1,13 @@
-import os
+﻿import os
 import io
 import json
+import uuid
 import logging
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Form, status, Request
+from fastapi import FastAPI, Depends, HTTPException, Query, UploadFile, File, Form, status, Request, BackgroundTasks
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,9 +19,37 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 
-from database import Base, engine, SessionLocal, User, Goal, Milestone, Reminder, Conversation, Memory, Artifact, AppealRequest
-from auth import hash_password, verify_password, create_access_token, decode_access_token
-from llm_router import run_llm_with_failover
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+from database import (
+    AppealRequest,
+    Artifact,
+    ArtifactChunk,
+    Base,
+    ChatSession,
+    ConversationMessage,
+    Goal,
+    GoalJob,
+    Memory,
+    Milestone,
+    Reminder,
+    SessionLocal,
+    User,
+    engine,
+)
+
+from database import (
+    Base, engine, SessionLocal, User, Goal, Milestone, Reminder, 
+    ChatSession, ConversationMessage, Memory, Artifact, ArtifactChunk,
+    AppealRequest, GoalJob
+)
+from auth import (
+    hash_password, verify_password, create_access_token, decode_access_token,
+    validate_password_strength, validate_uploaded_image, validate_uploaded_artifact
+)
+from llm_router import run_llm_with_failover, stream_llm_with_failover, stream_llm_tokens
 from agent_worker import AutonomousAgent
 from vector_service import LocalRAGService
 
@@ -32,43 +61,17 @@ logger = logging.getLogger("AURA-Core")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ARTIFACT_STORAGE_DIR = os.path.join(BASE_DIR, "artifacts_storage")
 AVATAR_DIR = os.path.join(ARTIFACT_STORAGE_DIR, "avatars")
+WEB_DIR = os.path.join(BASE_DIR, "web")
+
 os.makedirs(ARTIFACT_STORAGE_DIR, exist_ok=True)
 os.makedirs(AVATAR_DIR, exist_ok=True)
+os.makedirs(WEB_DIR, exist_ok=True)
 
 scheduler = BackgroundScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    
-    # Auto-migrate new columns
-    with engine.connect() as conn:
-        try:
-            conn.execute(text("ALTER TABLE conversations ADD COLUMN session_id VARCHAR(50)"))
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE goals ADD COLUMN daily_routine TEXT"))
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE reminders ADD COLUMN goal_id INTEGER"))
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE reminders ADD COLUMN completed_at DATETIME"))
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE users ADD COLUMN full_name VARCHAR(100)"))
-        except Exception:
-            pass
-        try:
-            conn.execute(text("ALTER TABLE users ADD COLUMN dob VARCHAR(30)"))
-        except Exception:
-            pass
-        conn.commit()
-        
     seed_default_users()
     scheduler.add_job(AutonomousAgent.midnight_decay_and_alert, CronTrigger(hour=0, minute=0))
     scheduler.add_job(AutonomousAgent.audit_and_nudge, CronTrigger(hour=8, minute=30))
@@ -76,11 +79,22 @@ async def lifespan(app: FastAPI):
     yield
     scheduler.shutdown()
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="AURA Intelligence Engine", version="2.0-hardened", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:8501",
+        "http://127.0.0.1:8501",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -122,15 +136,10 @@ def seed_default_users():
             pwd_hash, salt = hash_password("admin123")
             db.add(User(
                 username="admin", 
-<<<<<<< HEAD
-                email="admin@aura.internal",
-                phone="+1-800-AURA-ADM",
-=======
                 full_name="AURA Prime Controller",
                 email="admin@aura.internal",
                 phone="+1-800-AURA-ADM",
                 dob="1990-01-01",
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
                 address="Neural Ops Central, Floor 10",
                 bio="Platform Administrator & Core Controller",
                 password_hash=pwd_hash, 
@@ -139,13 +148,6 @@ def seed_default_users():
                 status="active",
                 freeze_tokens=5
             ))
-<<<<<<< HEAD
-        elif not getattr(admin, "salt", None):
-            pwd_hash, salt = hash_password("admin123")
-            admin.password_hash = pwd_hash
-            admin.salt = salt
-            admin.status = "active"
-=======
         else:
             if not getattr(admin, "salt", None):
                 pwd_hash, salt = hash_password("admin123")
@@ -156,22 +158,16 @@ def seed_default_users():
                 admin.full_name = "AURA Prime Controller"
             if not admin.dob:
                 admin.dob = "1990-01-01"
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 
         john = db.query(User).filter(User.username == "john").first()
         if not john:
             pwd_hash, salt = hash_password("operator123")
             db.add(User(
                 username="john", 
-<<<<<<< HEAD
-                email="john@operator.io",
-                phone="+1-555-019-2834",
-=======
                 full_name="John Operator",
                 email="john@operator.io",
                 phone="+1-555-019-2834",
                 dob="1998-05-15",
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
                 address="Sector 4B, Operator Quad",
                 bio="Systems Reliability Engineer",
                 password_hash=pwd_hash, 
@@ -180,13 +176,6 @@ def seed_default_users():
                 status="active",
                 freeze_tokens=2
             ))
-<<<<<<< HEAD
-        elif not getattr(john, "salt", None):
-            pwd_hash, salt = hash_password("operator123")
-            john.password_hash = pwd_hash
-            john.salt = salt
-            john.status = "active"
-=======
         else:
             if not getattr(john, "salt", None):
                 pwd_hash, salt = hash_password("operator123")
@@ -197,7 +186,6 @@ def seed_default_users():
                 john.full_name = "John Operator"
             if not john.dob:
                 john.dob = "1998-05-15"
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 
         db.commit()
     finally:
@@ -215,34 +203,26 @@ class ChatHistoryItem(BaseModel):
 class ChatMessagePayload(BaseModel):
     message: str
     conversation_history: Optional[List[ChatHistoryItem]] = []
-<<<<<<< HEAD
-=======
     session_id: Optional[str] = None
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 
 class ArtifactChatPayload(BaseModel):
     artifact_id: int
     message: str
     conversation_history: Optional[List[ChatHistoryItem]] = []
-<<<<<<< HEAD
-=======
     session_id: Optional[str] = None
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 
 class UserStatusAction(BaseModel):
-    action: str  # 'approve', 'reject', 'ban', 'unban'
+    action: str
     reason: Optional[str] = None
 
 class AppealSubmission(BaseModel):
     username: str
-    appeal_type: str = "unban"  # "unban" or "info"
+    appeal_type: str = "unban"
     message: str
 
 class RecoverySubmission(BaseModel):
     submission_note: str
 
-<<<<<<< HEAD
-=======
 class GoalCreatePayload(BaseModel):
     intention: str
     duration: str = "Unknown"
@@ -258,6 +238,7 @@ class ReminderCreatePayload(BaseModel):
 class AuraVoicePayload(BaseModel):
     transcript: str
     voice_speed: Optional[float] = 1.0
+    session_id: Optional[str] = None
 
 JarvisVoicePayload = AuraVoicePayload
 
@@ -272,7 +253,9 @@ class ProfileUpdatePayload(BaseModel):
     current_password: Optional[str] = None
     new_password: Optional[str] = None
 
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
+class ProgressPayload(BaseModel):
+    progress: int
+
 # ----------------- SYSTEM & AUTH -----------------
 
 @app.get("/health")
@@ -285,6 +268,7 @@ def system_health(db: Session = Depends(get_db)):
     return {"status": "online" if db_ok else "degraded", "database": db_ok, "timestamp": datetime.utcnow().isoformat()}
 
 @app.post("/auth/register")
+@limiter.limit("5/minute")
 async def register_user(request: Request, db: Session = Depends(get_db)):
     content_type = request.headers.get("content-type", "")
     avatar_path = None
@@ -303,9 +287,14 @@ async def register_user(request: Request, db: Session = Depends(get_db)):
         profile_pic_data = form.get("profile_pic_data")
         
         if avatar and hasattr(avatar, "filename") and avatar.filename:
+            content = await avatar.read()
+            # Strict file validation on ingestion
+            val_ok, val_err = validate_uploaded_image(content, avatar.filename)
+            if not val_ok:
+                raise HTTPException(status_code=400, detail=val_err)
+
             safe_fn = f"{username}_{int(datetime.utcnow().timestamp())}_{os.path.basename(avatar.filename)}"
             disk_path = os.path.join(AVATAR_DIR, safe_fn)
-            content = await avatar.read()
             with open(disk_path, "wb") as f:
                 f.write(content)
             avatar_path = f"/avatars/{safe_fn}"
@@ -325,6 +314,11 @@ async def register_user(request: Request, db: Session = Depends(get_db)):
 
     if not username or not password:
         raise HTTPException(status_code=400, detail="Username and password are required")
+
+    # Enforce Password Complexity Policy
+    pwd_ok, pwd_msg = validate_password_strength(password)
+    if not pwd_ok:
+        raise HTTPException(status_code=400, detail=pwd_msg)
 
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Username is already registered")
@@ -368,8 +362,10 @@ async def register_user(request: Request, db: Session = Depends(get_db)):
         "created_at": new_user.created_at.isoformat() if new_user.created_at else None
     }
 
+# --- 1. Rate-Limited Auth Endpoints ---
 @app.post("/auth/login")
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
     clean_username = payload.username.strip().lower()
     user = db.query(User).filter(User.username == clean_username).first()
     user_salt = getattr(user, "salt", None)
@@ -377,14 +373,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(payload.password.strip(), user.password_hash, user_salt):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    # Enforce User Lifecycle Governance
     if user.status == "pending":
-        raise HTTPException(status_code=403, detail="ACCOUNT_PENDING: Your registration request is pending administrative review.")
-    if user.status == "rejected":
-        raise HTTPException(status_code=403, detail="ACCOUNT_REJECTED: Your operator registration request was declined.")
+        raise HTTPException(status_code=403, detail="ACCOUNT_PENDING: Registration pending administrative review.")
     if user.status == "banned":
-        reason = user.ban_reason or "Suspicious or unauthorized activities detected."
-        raise HTTPException(status_code=403, detail=f"ACCOUNT_BANNED: Access suspended. Reason: {reason}")
+        raise HTTPException(status_code=403, detail=f"ACCOUNT_BANNED: Access suspended. {user.ban_reason or ''}")
 
     token = create_access_token({"sub": user.username, "user_id": user.id, "role": user.role})
     return {
@@ -394,15 +386,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         "username": user.username,
         "full_name": getattr(user, "full_name", None) or user.username.capitalize(),
         "role": user.role,
-        "email": user.email,
-        "phone": user.phone,
-        "dob": getattr(user, "dob", None),
-        "address": user.address,
-        "bio": user.bio,
-        "profile_pic": user.profile_pic,
         "status": user.status,
-        "freeze_tokens": user.freeze_tokens,
-        "created_at": user.created_at.isoformat() if user.created_at else None
+        "freeze_tokens": user.freeze_tokens
     }
 
 # ----------------- OPERATOR PROFILE ENDPOINTS -----------------
@@ -411,12 +396,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 def get_user_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     goals = db.query(Goal).filter(Goal.user_id == current_user.id).all()
     reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id).all()
-    convs_count = db.query(Conversation).filter(Conversation.user_id == current_user.id).count()
-    
-    active_goals = len(goals)
-    completed_tasks = sum(1 for r in reminders if r.is_completed)
-    pending_tasks = sum(1 for r in reminders if not r.is_completed)
-    peak_streak = max([g.streak_count for g in goals], default=0)
+    convs_count = db.query(ConversationMessage).filter(ConversationMessage.user_id == current_user.id).count()
     
     return {
         "id": current_user.id,
@@ -433,10 +413,10 @@ def get_user_profile(current_user: User = Depends(get_current_user), db: Session
         "freeze_tokens": current_user.freeze_tokens,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
         "stats": {
-            "active_goals": active_goals,
-            "pending_tasks": pending_tasks,
-            "completed_tasks": completed_tasks,
-            "peak_streak": peak_streak,
+            "active_goals": len(goals),
+            "pending_tasks": sum(1 for r in reminders if not r.is_completed),
+            "completed_tasks": sum(1 for r in reminders if r.is_completed),
+            "peak_streak": max([g.streak_count for g in goals], default=0),
             "total_chats": convs_count
         }
     }
@@ -492,9 +472,12 @@ def update_user_profile(payload: ProfileUpdatePayload, current_user: User = Depe
 async def upload_profile_photo(photo: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not photo.filename:
         raise HTTPException(status_code=400, detail="No photo file was uploaded")
+    content = await photo.read()
+    val_ok, val_err = validate_uploaded_image(content, photo.filename)
+    if not val_ok:
+        raise HTTPException(status_code=400, detail=val_err)
     safe_fn = f"{current_user.username}_{int(datetime.utcnow().timestamp())}_{os.path.basename(photo.filename)}"
     disk_path = os.path.join(AVATAR_DIR, safe_fn)
-    content = await photo.read()
     with open(disk_path, "wb") as f:
         f.write(content)
     avatar_url = f"/avatars/{safe_fn}"
@@ -533,7 +516,30 @@ def submit_appeal(payload: AppealSubmission, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "received", "message": "Appeal request transmitted to Admin review dispatch."}
 
-# ----------------- CHAT & REASONING -----------------
+# ----------------- CHAT & REASONING (NORMALIZED & SSE STREAMING) -----------------
+
+def get_or_create_chat_session(db: Session, user_id: int, session_id: Optional[str] = None, initial_title: Optional[str] = None) -> ChatSession:
+    sess = None
+    if session_id:
+        try:
+            int_id = int(session_id)
+            sess = db.query(ChatSession).filter(ChatSession.id == int_id, ChatSession.user_id == user_id).first()
+        except ValueError:
+            pass
+
+    if not sess:
+        raw_title = (initial_title or "New Conversation").strip()
+        clean_title = (raw_title[:47] + "...") if len(raw_title) > 50 else (raw_title or "New Conversation")
+        sess = ChatSession(
+            user_id=user_id,
+            title=clean_title,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(sess)
+        db.commit()
+        db.refresh(sess)
+    return sess
 
 @app.post("/chat")
 def chat_endpoint(payload: ChatMessagePayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -541,9 +547,10 @@ def chat_endpoint(payload: ChatMessagePayload, current_user: User = Depends(get_
     mem_context = "\n".join([f"- [{m.category}] {m.fact}" for m in memories]) if memories else "No prior history."
 
     system_prompt = (
-        f"You are AURA, a brilliant, thoughtful, and warm personal partner and assistant to {current_user.username.capitalize()}.\n"
-        f"User context:\n{mem_context}\n"
-        "Communicate with natural human warmth, clarity, and genuine intelligence. Be helpful, direct, and thoughtful."
+        f"You are AURA, an Adaptive Unified Reasoning Assistant.\n"
+        f"Operator: {current_user.username.capitalize()} (Role: {current_user.role})\n"
+        f"Cognitive User Context:\n{mem_context}\n"
+        "Provide direct, high-density, analytical responses."
     )
     
     messages = [{"role": "system", "content": system_prompt}]
@@ -554,14 +561,87 @@ def chat_endpoint(payload: ChatMessagePayload, current_user: User = Depends(get_
     reply, provider = run_llm_with_failover(messages)
     formatted = f"{reply}\n\n*(Engine: {provider})*"
 
-    c_user = Conversation(user_id=current_user.id, role="user", content=payload.message, session_id=payload.session_id)
-    c_asst = Conversation(user_id=current_user.id, role="assistant", content=formatted, session_id=payload.session_id)
-    
-    db.add(c_user)
-    db.add(c_asst)
+    session = get_or_create_chat_session(db, current_user.id, payload.session_id, payload.message)
+    session.updated_at = datetime.utcnow()
+
+    # Save to normalized ConversationMessage
+    db.add(ConversationMessage(session_id=session.id, user_id=current_user.id, role="user", content=payload.message))
+    db.add(ConversationMessage(session_id=session.id, user_id=current_user.id, role="assistant", content=formatted))
+
+    # Save to legacy Conversation for dual compatibility
+    db.add(ConversationMessage(user_id=current_user.id, role="user", content=payload.message, session_id=str(session.id)))
+    db.add(ConversationMessage(user_id=current_user.id, role="assistant", content=formatted, session_id=str(session.id)))
     db.commit()
 
-    return {"response": formatted, "provider": provider}
+    return {"response": formatted, "provider": provider, "session_id": str(session.id)}
+
+# --- 2. Real-Time Token Streaming (SSE) & Normalized Chat Persistence ---
+@app.post("/chat/stream")
+def chat_stream_endpoint(
+    payload: ChatMessagePayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Safely resolve numeric session_id
+    target_session = None
+    raw_sid = payload.session_id
+
+    if raw_sid:
+        try:
+            sid_int = int(raw_sid)
+            target_session = db.query(ChatSession).filter(
+                ChatSession.id == sid_int,
+                ChatSession.user_id == current_user.id
+            ).first()
+        except (ValueError, TypeError):
+            target_session = None
+
+    if not target_session:
+        title_snippet = (payload.message[:35] + "...") if payload.message else "New Conversation"
+        target_session = ChatSession(user_id=current_user.id, title=title_snippet)
+        db.add(target_session)
+        db.commit()
+        db.refresh(target_session)
+
+    session_id_val = target_session.id
+
+    # Persist user turn
+    db.add(ConversationMessage(
+        session_id=session_id_val,
+        user_id=current_user.id,
+        role="user",
+        content=payload.message
+    ))
+    db.commit()
+
+    system_prompt = (
+        f"You are AURA, an executive AI assistant to {current_user.username.capitalize()}.\n"
+        "Communicate with precision, analytical clarity, and concise answers."
+    )
+    
+    messages = [{"role": "system", "content": system_prompt}]
+    for item in (payload.conversation_history or [])[-6:]:
+        messages.append({"role": item.role, "content": item.content})
+    messages.append({"role": "user", "content": payload.message})
+
+    def event_generator():
+        collected = []
+        for token in stream_llm_tokens(messages):
+            collected.append(token)
+            yield f"data: {json.dumps({'token': token, 'session_id': session_id_val})}\n\n"
+        
+        full_reply = "".join(collected)
+        with SessionLocal() as db_inner:
+            db_inner.add(ConversationMessage(
+                session_id=session_id_val,
+                user_id=current_user.id,
+                role="assistant",
+                content=full_reply
+            ))
+            db_inner.commit()
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.post("/chat/artifact")
 def artifact_chat(payload: ArtifactChatPayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -574,7 +654,7 @@ def artifact_chat(payload: ArtifactChatPayload, current_user: User = Depends(get
         with open(art.file_path, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
 
-    chunks = LocalRAGService.rank_relevant_chunks(payload.message, content, top_k=3)
+    chunks = LocalRAGService.rank_artifact_chunks(art.id, payload.message, db, doc_text_fallback=content, top_k=3)
     grounded_context = "\n\n---\n\n".join(chunks) if chunks else content[:8000]
 
     sys_prompt = f"Grounded Artifact: {art.filename}\nContext:\n{grounded_context}\nAnswer citing specifics."
@@ -586,46 +666,77 @@ def artifact_chat(payload: ArtifactChatPayload, current_user: User = Depends(get
     reply, provider = run_llm_with_failover(messages)
     formatted = f"{reply}\n\n*(Engine: {provider} | Grounded: `{art.filename}`)*"
 
-    c_user = Conversation(user_id=current_user.id, role="user", content=f"[{art.filename}] {payload.message}", session_id=payload.session_id)
-    c_asst = Conversation(user_id=current_user.id, role="assistant", content=formatted, session_id=payload.session_id)
-    
-    db.add(c_user)
-    db.add(c_asst)
+    session = get_or_create_chat_session(db, current_user.id, payload.session_id, f"Artifact: {art.filename}")
+    session.updated_at = datetime.utcnow()
+
+    db.add(ConversationMessage(session_id=session.id, user_id=current_user.id, role="user", content=f"[{art.filename}] {payload.message}"))
+    db.add(ConversationMessage(session_id=session.id, user_id=current_user.id, role="assistant", content=formatted))
+
+    db.add(ConversationMessage(user_id=current_user.id, role="user", content=f"[{art.filename}] {payload.message}", session_id=str(session.id)))
+    db.add(ConversationMessage(user_id=current_user.id, role="assistant", content=formatted, session_id=str(session.id)))
     db.commit()
 
-    return {"response": formatted}
+    return {"response": formatted, "session_id": str(session.id)}
 
-<<<<<<< HEAD
-=======
 @app.get("/chat/history")
 def get_chat_history(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Group by session_id
-    rows = db.query(Conversation).filter(Conversation.user_id == current_user.id).order_by(Conversation.timestamp.desc()).all()
-    sessions = {}
-    for r in rows:
-        sid = getattr(r, "session_id", None) or "legacy_session"
-        if sid not in sessions:
-            sessions[sid] = []
-        sessions[sid].append({"role": r.role, "content": r.content, "time": r.timestamp.isoformat()})
-    
+    # 1. Fetch normalized chat sessions
+    sessions = db.query(ChatSession).filter(ChatSession.user_id == current_user.id).order_by(ChatSession.updated_at.desc()).all()
     out = []
-    for sid, msgs in sessions.items():
-        # Reverse to chronological order
+    seen_ids = set()
+
+    for s in sessions:
+        seen_ids.add(str(s.id))
+        msgs = [
+            {"role": m.role, "content": m.content, "time": m.timestamp.isoformat()}
+            for m in s.messages
+        ]
+        preview = s.title if s.title else (msgs[0]["content"][:50] + "..." if msgs else "Empty Chat")
+        out.append({
+            "session_id": str(s.id),
+            "preview": preview,
+            "messages": msgs,
+            "updated_at": s.updated_at.isoformat() if s.updated_at else None
+        })
+
+    # 2. Dual check for any legacy unmigrated Conversation sessions
+    legacy_rows = db.query(ConversationMessage).filter(ConversationMessage.user_id == current_user.id).order_by(ConversationMessage.timestamp.desc()).all()
+    legacy_sessions = {}
+    for r in legacy_rows:
+        sid = getattr(r, "session_id", None) or "legacy_session"
+        if sid not in seen_ids:
+            if sid not in legacy_sessions:
+                legacy_sessions[sid] = []
+            legacy_sessions[sid].append({"role": r.role, "content": r.content, "time": r.timestamp.isoformat()})
+
+    for sid, msgs in legacy_sessions.items():
         msgs.reverse()
         preview = msgs[0]["content"][:50] + "..." if msgs else "Empty Chat"
         out.append({"session_id": sid, "preview": preview, "messages": msgs})
+
     return {"history": out}
 
 @app.delete("/chat/session/{session_id}")
 def delete_chat_session(session_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    deleted_count = db.query(Conversation).filter(
-        Conversation.user_id == current_user.id,
-        Conversation.session_id == session_id
+    # Delete from normalized ChatSession
+    try:
+        int_id = int(session_id)
+        sess = db.query(ChatSession).filter(ChatSession.id == int_id, ChatSession.user_id == current_user.id).first()
+        if sess:
+            db.delete(sess)
+    except ValueError:
+        pass
+
+    # Also delete any legacy Conversation rows
+    deleted_count = db.query(ConversationMessage).filter(
+        ConversationMessage.user_id == current_user.id,
+        ConversationMessage.session_id == session_id
     ).delete(synchronize_session=False)
+
     db.commit()
     return {"status": "deleted", "deleted_count": deleted_count, "session_id": session_id}
 
-# --- AURA NEURAL VOICE DIRECTIVE ROUTE ---
+# --- AURA / JARVIS VOICE DIRECTIVE ROUTE ---
 @app.post("/aura/directive")
 @app.post("/jarvis/directive")
 def execute_aura_directive(
@@ -635,7 +746,6 @@ def execute_aura_directive(
 ):
     query = payload.transcript.strip()
     
-    # Context retrieval: user profile, active goals, open tasks
     goals = db.query(Goal).filter(Goal.user_id == current_user.id).all()
     reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id, Reminder.is_completed == False).all()
     
@@ -644,14 +754,10 @@ def execute_aura_directive(
     context_str += f"Pending Tasks: {', '.join([r.task_text for r in reminders[:3]]) if reminders else 'All directives cleared'}\n"
 
     system_instruction = (
-        f"You are AURA, a brilliant, thoughtful, and warm personal partner to {current_user.username.capitalize()}.\n"
-        "Communicate just like an articulate, empathetic, supportive human having a real-time voice conversation.\n"
-        "Guidelines:\n"
-        "- Tone: Genuine, calm, intelligent, and warm. Sound human, not like a chatbot or computer system.\n"
-        "- Length: Keep verbal responses concise and natural (typically 1 to 3 sentences) so you don't overwhelm the user or talk over them.\n"
-        "- Style: Never use robotic phrases like 'As an AI', 'Directive acknowledged', 'Cognitive systems nominal', or mechanical bullet dumps. Use natural, human conversational flow.\n"
-        "- If the user shares a goal, problem, or feeling, acknowledge it with genuine human empathy and clarity.\n"
-        f"Context about {current_user.username.capitalize()}:\n{context_str}"
+        f"You are AURA, an executive personal intelligence assistant to {current_user.username.capitalize()}.\n"
+        "Provide clear, crisp, and high-density actionable guidance.\n"
+        "Keep vocal responses concise (1 to 3 sentences maximum).\n"
+        f"Context:\n{context_str}"
     )
 
     messages = [
@@ -661,23 +767,85 @@ def execute_aura_directive(
 
     reply, provider = run_llm_with_failover(messages)
 
-    # Save to history
-    db.add(Conversation(user_id=current_user.id, role="user", content=f"[AURA Voice] {query}", session_id="aura_voice"))
-    db.add(Conversation(user_id=current_user.id, role="assistant", content=f"[AURA] {reply}", session_id="aura_voice"))
+    session = get_or_create_chat_session(db, current_user.id, payload.session_id, f"Voice: {query}")
+    session.updated_at = datetime.utcnow()
+
+    db.add(ConversationMessage(session_id=session.id, user_id=current_user.id, role="user", content=f"[AURA Voice] {query}"))
+    db.add(ConversationMessage(session_id=session.id, user_id=current_user.id, role="assistant", content=f"[AURA] {reply}"))
+    db.add(ConversationMessage(user_id=current_user.id, role="user", content=f"[AURA Voice] {query}", session_id=str(session.id)))
+    db.add(ConversationMessage(user_id=current_user.id, role="assistant", content=f"[AURA] {reply}", session_id=str(session.id)))
     db.commit()
 
     return {
         "status": "acknowledged",
         "response_text": reply,
         "engine": provider,
+        "session_id": str(session.id),
         "timestamp": datetime.utcnow().isoformat()
     }
+
+@app.post("/aura/directive/stream")
+@app.post("/jarvis/directive/stream")
+async def execute_aura_directive_stream(
+    payload: AuraVoicePayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    query = payload.transcript.strip()
+    goals = db.query(Goal).filter(Goal.user_id == current_user.id).all()
+    reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id, Reminder.is_completed == False).all()
+    
+    context_str = f"Operator: {current_user.username.upper()} (Role: {current_user.role})\n"
+    context_str += f"Goals: {', '.join([g.intention for g in goals[:3]]) if goals else 'No active goals'}\n"
+    context_str += f"Pending Tasks: {', '.join([r.task_text for r in reminders[:3]]) if reminders else 'All directives cleared'}\n"
+
+    system_instruction = (
+        f"You are AURA, an executive personal intelligence assistant to {current_user.username.capitalize()}.\n"
+        "Provide clear, crisp, and high-density actionable guidance.\n"
+        "Keep vocal responses concise (1 to 3 sentences maximum).\n"
+        f"Context:\n{context_str}"
+    )
+
+    messages = [
+        {"role": "system", "content": system_instruction},
+        {"role": "user", "content": query}
+    ]
+
+    session = get_or_create_chat_session(db, current_user.id, payload.session_id, f"Voice: {query}")
+    session_id_str = str(session.id)
+    user_id = current_user.id
+
+    async def event_generator():
+        accumulated_reply = []
+        try:
+            yield f"data: {json.dumps({'type': 'init', 'session_id': session_id_str})}\n\n"
+            for token in stream_llm_with_failover(messages):
+                accumulated_reply.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
+            
+            full_reply = "".join(accumulated_reply)
+            with SessionLocal() as write_db:
+                s = write_db.query(ChatSession).filter(ChatSession.id == int(session_id_str)).first()
+                if s:
+                    s.updated_at = datetime.utcnow()
+                write_db.add(ConversationMessage(session_id=int(session_id_str), user_id=user_id, role="user", content=f"[AURA Voice] {query}"))
+                write_db.add(ConversationMessage(session_id=int(session_id_str), user_id=user_id, role="assistant", content=f"[AURA] {full_reply}"))
+                write_db.add(ConversationMessage(user_id=user_id, role="user", content=f"[AURA Voice] {query}", session_id=session_id_str))
+                write_db.add(ConversationMessage(user_id=user_id, role="assistant", content=f"[AURA] {full_reply}", session_id=session_id_str))
+                write_db.commit()
+
+            yield f"data: {json.dumps({'type': 'done', 'full_response': full_reply, 'session_id': session_id_str})}\n\n"
+        except Exception as e:
+            logger.error(f"Error in aura directive stream: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/export/json")
 def export_workspace(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     goals = db.query(Goal).filter(Goal.user_id == current_user.id).all()
     reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id).all()
-    conversations = db.query(Conversation).filter(Conversation.user_id == current_user.id).all()
+    conversations = db.query(ConversationMessage).filter(ConversationMessage.user_id == current_user.id).all()
     return {
         "exported_at": datetime.utcnow().isoformat(),
         "operator": current_user.username,
@@ -686,7 +854,6 @@ def export_workspace(current_user: User = Depends(get_current_user), db: Session
         "conversations": [{"role": c.role, "content": c.content, "timestamp": c.timestamp.isoformat()} for c in conversations]
     }
 
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 # ----------------- GOALS & DASHBOARD -----------------
 
 @app.get("/goals/freeze-status")
@@ -701,7 +868,6 @@ def add_freeze_token(current_user: User = Depends(get_current_user), db: Session
 
 def compute_auto_progress(goal: Goal, db: Session) -> int:
     import re
-    # Priority 1: Progress driven by tasks completion
     tasks = db.query(Reminder).filter(Reminder.goal_id == goal.id).all()
     milestones = db.query(Milestone).filter(Milestone.goal_id == goal.id).all()
 
@@ -779,97 +945,163 @@ def get_dashboard(current_user: User = Depends(get_current_user), db: Session = 
         ]
     }
 
-@app.post("/goals")
-def create_goal(payload: GoalCreatePayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def generate_goal_roadmap_task(
+    job_id: str,
+    goal_id: int,
+    intention: str,
+    category: str,
+    duration: str,
+    experience: str,
+    user_id: int
+):
     prompt = (
-        f"The user wants to achieve this goal: '{payload.intention}'.\n"
-        f"Category: {payload.category}\n"
-        f"Duration: {payload.duration}\n"
-        f"User Experience Level: {payload.experience}\n"
+        f"The user wants to achieve this goal: '{intention}'.\n"
+        f"Category: {category}\n"
+        f"Duration: {duration}\n"
+        f"User Experience Level: {experience}\n"
         "Generate a highly detailed strategic plan. Return ONLY a JSON object with EXACTLY these keys:\n"
         "- 'timeline': (string, e.g., '30 Days' or '12 Weeks')\n"
         "- 'phases': (list of 3-5 strings, major milestone titles)\n"
         "- 'summary': (string, 1-2 sentences summarizing what this goal entails)\n"
-        "- 'roadmap': (list of 4-6 strings, detailed milestone steps where each item starts with a phase/timeline marker like 'Phase 1: ...' or 'Week 1: ...')\n"
-        "- 'daily_tasks': (list of 3-5 strings, specific actionable daily habits the user should do each day)\n"
+        "- 'roadmap': (list of 4-6 strings, detailed milestone steps)\n"
+        "- 'daily_tasks': (list of 3-5 strings, specific actionable daily habits)\n"
     )
-    content, _ = run_llm_with_failover([{"role": "user", "content": prompt}], json_mode=True)
-    try:
-        cleaned_content = content.strip()
-        if cleaned_content.startswith("```json"):
-            cleaned_content = cleaned_content[7:]
-        elif cleaned_content.startswith("```"):
-            cleaned_content = cleaned_content[3:]
-        if cleaned_content.endswith("```"):
-            cleaned_content = cleaned_content[:-3]
-        data = json.loads(cleaned_content.strip())
-    except Exception as e:
-        logger.error(f"Failed to parse LLM JSON: {e} | Content: {content}")
-        data = {
-            "timeline": payload.duration, 
-            "phases": ["Planning", "Execution", "Review"], 
-            "summary": "Take consistent action towards your goal.",
-            "roadmap": [
-                "Phase 1 (Setup): Establish fundamentals and review tools.",
-                "Phase 2 (Core Build): Implement core concepts and practice daily.",
-                "Phase 3 (Mastery): Review metrics, refine output, and consolidate learnings."
-            ],
-            "daily_tasks": ["Work on primary objective for 30-45 minutes", "Log key takeaways and blockers"]
-        }
+    with SessionLocal() as db:
+        job = db.query(GoalJob).filter(GoalJob.id == job_id).first()
+        goal = db.query(Goal).filter(Goal.id == goal_id).first()
+        if not job or not goal:
+            logger.error(f"Background goal job {job_id} or goal {goal_id} not found.")
+            return
+
+        try:
+            job.status = "generating"
+            db.commit()
+
+            content, _ = run_llm_with_failover([{"role": "user", "content": prompt}], json_mode=True)
+            cleaned_content = content.strip()
+            if cleaned_content.startswith("```json"):
+                cleaned_content = cleaned_content[7:]
+            elif cleaned_content.startswith("```"):
+                cleaned_content = cleaned_content[3:]
+            if cleaned_content.endswith("```"):
+                cleaned_content = cleaned_content[:-3]
+            data = json.loads(cleaned_content.strip())
+        except Exception as e:
+            logger.error(f"Failed to generate/parse LLM roadmap for goal {goal_id}: {e}")
+            data = {
+                "timeline": duration or "30 Days", 
+                "phases": ["Planning & Fundamentals", "Core Execution", "Review & Consolidation"], 
+                "summary": "Execute consistent daily action towards your objective.",
+                "roadmap": [
+                    "Phase 1 (Setup): Establish fundamentals and review necessary tools.",
+                    "Phase 2 (Core Build): Implement core concepts and practice daily routines.",
+                    "Phase 3 (Mastery): Review metrics, refine output, and consolidate key learnings."
+                ],
+                "daily_tasks": ["Work on primary objective for 30-45 minutes", "Log key takeaways and blockers"]
+            }
+
+        try:
+            summary_text = str(data.get("summary", "Take consistent daily action towards this goal.")).strip()
+            roadmap_raw = data.get("roadmap", ["Focus on daily execution and review progress."])
+            daily_tasks = data.get("daily_tasks", ["Dedicate 30 minutes to focused goal execution", "Record daily insights and progress"])
+
+            markdown_text = f"### ðŸ“‹ Goal Summary\n{summary_text}\n\n### ðŸ—ºï¸ Strategic Roadmap\n"
+            if isinstance(roadmap_raw, list):
+                for item in roadmap_raw:
+                    clean_item = str(item).strip()
+                    if clean_item:
+                        markdown_text += f"- {clean_item.lstrip('-* ')}\n"
+            else:
+                for line in str(roadmap_raw).split("\n"):
+                    clean_line = line.strip()
+                    if clean_line:
+                        markdown_text += f"- {clean_line.lstrip('-* ')}\n"
+
+            markdown_text += "\n### âœ… Daily Action Plan\n"
+            for task in daily_tasks:
+                clean_task = str(task).strip()
+                if clean_task:
+                    markdown_text += f"- {clean_task.lstrip('-* ')}\n"
+
+            goal.timeline = data.get("timeline", duration or "30 Days")
+            goal.daily_routine = markdown_text
+
+            for phase in data.get("phases", []):
+                db.add(Milestone(goal_id=goal.id, phase_title=phase))
+                
+            for rem in data.get("daily_tasks", []):
+                db.add(Reminder(user_id=user_id, goal_id=goal.id, task_text=rem, priority="High", due_info="Today"))
+
+            job.status = "ready"
+            job.completed_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Goal generation background task completed successfully for job {job_id}, goal {goal_id}.")
+        except Exception as e:
+            logger.error(f"Error persisting background goal roadmap: {e}")
+            job.status = "failed"
+            job.error_message = str(e)
+            db.commit()
+
+@app.post("/goals")
+def create_goal(
+    payload: GoalCreatePayload,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    job_id = f"job_{uuid.uuid4().hex[:12]}"
 
     goal = Goal(
         user_id=current_user.id,
         intention=payload.intention,
-        timeline=data.get("timeline", payload.duration or "30 Days"),
+        timeline=payload.duration or "30 Days",
         current_level=payload.experience or "Beginner",
-        last_check_in_date=None
+        last_check_in_date=None,
+        daily_routine="### ðŸ“‹ Initializing Goal Strategy\n*Neural engine synthesizing strategic roadmap and daily action plan in background...*"
     )
-
-    summary_text = str(data.get("summary", "Take consistent daily action towards this goal.")).strip()
-    roadmap_raw = data.get("roadmap", ["Focus on daily execution and review progress."])
-    daily_tasks = data.get("daily_tasks", ["Dedicate 30 minutes to focused goal execution", "Record daily insights and progress"])
-
-    markdown_text = f"### 📋 Goal Summary\n{summary_text}\n\n### 🗺️ Strategic Roadmap\n"
-    if isinstance(roadmap_raw, list):
-        for item in roadmap_raw:
-            clean_item = str(item).strip()
-            if clean_item:
-                if not clean_item.startswith("-") and not clean_item.startswith("*"):
-                    markdown_text += f"- {clean_item}\n"
-                else:
-                    markdown_text += f"{clean_item}\n"
-    else:
-        for line in str(roadmap_raw).split("\n"):
-            clean_line = line.strip()
-            if clean_line:
-                if not clean_line.startswith("-") and not clean_line.startswith("*") and not (len(clean_line) > 1 and clean_line[0].isdigit() and clean_line[1] in [".", ")"]):
-                    markdown_text += f"- {clean_line}\n"
-                else:
-                    markdown_text += f"{clean_line}\n"
-
-    markdown_text += "\n### ✅ Daily Action Plan\n"
-    for task in daily_tasks:
-        clean_task = str(task).strip()
-        if clean_task:
-            if not clean_task.startswith("-") and not clean_task.startswith("*"):
-                markdown_text += f"- {clean_task}\n"
-            else:
-                markdown_text += f"{clean_task}\n"
-
-    setattr(goal, "daily_routine", markdown_text)
-    
     db.add(goal)
     db.commit()
     db.refresh(goal)
-    
-    for phase in data.get("phases", []):
-        db.add(Milestone(goal_id=goal.id, phase_title=phase))
-        
-    for rem in data.get("daily_tasks", []):
-        db.add(Reminder(user_id=current_user.id, goal_id=goal.id, task_text=rem, priority="High", due_info="Today"))
-        
+
+    job = GoalJob(
+        id=job_id,
+        user_id=current_user.id,
+        goal_id=goal.id,
+        status="pending"
+    )
+    db.add(job)
     db.commit()
-    return {"status": "created", "goal_id": goal.id}
+
+    background_tasks.add_task(
+        generate_goal_roadmap_task,
+        job_id=job_id,
+        goal_id=goal.id,
+        intention=payload.intention,
+        category=payload.category,
+        duration=payload.duration,
+        experience=payload.experience,
+        user_id=current_user.id
+    )
+
+    return {
+        "status": "queued",
+        "job_id": job_id,
+        "goal_id": goal.id,
+        "message": "Strategic roadmap generation dispatched to background queue."
+    }
+
+@app.get("/goals/jobs/{job_id}")
+def get_goal_job_status(job_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    job = db.query(GoalJob).filter(GoalJob.id == job_id, GoalJob.user_id == current_user.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Goal generation job not found")
+    return {
+        "job_id": job.id,
+        "goal_id": job.goal_id,
+        "status": job.status,
+        "error_message": job.error_message,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None
+    }
 
 @app.post("/reminders")
 def create_reminder(payload: ReminderCreatePayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -924,13 +1156,11 @@ def toggle_reminder(reminder_id: int, current_user: User = Depends(get_current_u
         goal = db.query(Goal).filter(Goal.id == r.goal_id).first()
         if goal:
             today = date.today()
-            # Check how many tasks are completed for this goal
             completed_tasks_count = db.query(Reminder).filter(
                 Reminder.goal_id == goal.id,
                 Reminder.is_completed == True
             ).count()
             
-            # User requirement: "daily streak should update only after i complete atleast one or two daily task of that particular goal"
             if r.is_completed and completed_tasks_count >= 1:
                 if goal.last_check_in_date != today:
                     goal.streak_count += 1
@@ -939,7 +1169,6 @@ def toggle_reminder(reminder_id: int, current_user: User = Depends(get_current_u
                     goal.in_recovery = False
                     streak_updated = True
             
-            # Update progress based on completed tasks
             goal.progress_percentage = compute_auto_progress(goal, db)
             goal_streak = goal.streak_count
             goal_progress = goal.progress_percentage
@@ -954,6 +1183,7 @@ def toggle_reminder(reminder_id: int, current_user: User = Depends(get_current_u
     }
 
 @app.get("/briefing/speak")
+@app.get("/briefing/listen")
 async def get_briefing_audio(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     from briefing_service import BriefingService
     import asyncio
@@ -973,12 +1203,7 @@ async def get_briefing_audio(current_user: User = Depends(get_current_user), db:
         engine.runAndWait()
 
     await asyncio.to_thread(_generate_audio)
-    
     return FileResponse(filepath, media_type="audio/wav")
-
-@app.get("/briefing/listen")
-async def get_briefing_audio_alias(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return await get_briefing_audio(current_user=current_user, db=db)
 
 @app.post("/goals/{goal_id}/checkin")
 def checkin_goal(goal_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -1004,9 +1229,6 @@ def delete_goal(goal_id: int, current_user: User = Depends(get_current_user), db
     db.commit()
     return {"status": "deleted"}
 
-class ProgressPayload(BaseModel):
-    progress: int
-
 @app.put("/goals/{goal_id}/progress")
 def update_progress(goal_id: int, payload: ProgressPayload, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     goal = db.query(Goal).filter(Goal.id == goal_id, Goal.user_id == current_user.id).first()
@@ -1031,6 +1253,7 @@ def solve_recovery(goal_id: int, payload: RecoverySubmission, current_user: User
 
 # ----------------- ARTIFACT REPOSITORY -----------------
 
+# --- 3. Artifact Upload with Magic-Byte Inspection & Precomputed Indexing ---
 @app.post("/artifacts/upload")
 async def upload_artifact(
     file: UploadFile = File(...),
@@ -1038,9 +1261,15 @@ async def upload_artifact(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    file_bytes = await file.read()
+    
+    # Enforce magic-byte and executable header inspection
+    valid, err_msg = validate_uploaded_artifact(file_bytes, file.filename)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err_msg)
+
     user_dir = os.path.join(ARTIFACT_STORAGE_DIR, f"user_{current_user.id}")
     os.makedirs(user_dir, exist_ok=True)
-    file_bytes = await file.read()
     dest = os.path.join(user_dir, file.filename)
     with open(dest, "wb") as f:
         f.write(file_bytes)
@@ -1050,6 +1279,7 @@ async def upload_artifact(
         {"role": "system", "content": "You are AURA's Artifact Analyzer."},
         {"role": "user", "content": f"{prompt}\n\nDocument:\n{preview}"}
     ])
+    
     art = Artifact(
         user_id=current_user.id,
         filename=file.filename,
@@ -1059,6 +1289,12 @@ async def upload_artifact(
     )
     db.add(art)
     db.commit()
+    db.refresh(art)
+
+    # Pre-embed and index chunks into SQLite immediately
+    doc_full_text = file_bytes.decode("utf-8", errors="replace")
+    LocalRAGService.index_artifact_chunks(art.id, doc_full_text)
+
     return {"id": art.id, "filename": art.filename, "analysis": analysis}
 
 @app.get("/artifacts")
@@ -1107,15 +1343,8 @@ def get_appeals(admin: User = Depends(require_admin), db: Session = Depends(get_
     return {"appeals": [
         {"id": a.id, "user_id": a.user_id, "username": a.user.username, "type": a.appeal_type, "message": a.message, "date": a.created_at}
         for a in appeals
-<<<<<<< HEAD
-    ]}
-=======
     ]}
 
-# --- SERVE AVATARS & MODERN UNIFIED WEB APPLICATION ---
-WEB_DIR = os.path.join(BASE_DIR, "web")
-os.makedirs(WEB_DIR, exist_ok=True)
-os.makedirs(AVATAR_DIR, exist_ok=True)
+# Static file serving
 app.mount("/avatars", StaticFiles(directory=AVATAR_DIR), name="avatars")
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)

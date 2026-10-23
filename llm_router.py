@@ -92,3 +92,80 @@ def run_llm_with_failover(messages: list, json_mode: bool = False) -> tuple[str,
             f"All AI engines failed. Check your GROQ_API_KEY or ensure Ollama is running. "
             f"Details: {fallback_error}"
         )
+
+def stream_llm_with_failover(messages: list):
+    """
+    Generator yielding token strings in real-time.
+    Attempts primary Groq Cloud streaming, falling back to Ollama local streaming.
+    """
+    init_groq()
+    if groq_client and ACTIVE_GROQ_MODEL:
+        try:
+            logger.info(f"Streaming via Primary Engine (Groq Cloud: {ACTIVE_GROQ_MODEL})...")
+            stream = groq_client.chat.completions.create(
+                model=ACTIVE_GROQ_MODEL,
+                messages=messages,
+                temperature=0.7,
+                stream=True
+            )
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+            return
+        except Exception as primary_error:
+            logger.warning(f"Groq streaming failed: {primary_error}. Attempting Ollama streaming fallback...")
+
+    # Fallback to Ollama local streaming
+    try:
+        logger.info("Streaming via Fallback Engine (Ollama Local)...")
+        stream = ollama_client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=messages,
+            temperature=0.7,
+            stream=True
+        )
+        for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+    except Exception as fallback_error:
+        logger.error(f"Both streaming engines failed. Ollama error: {fallback_error}")
+        yield f"\n\n[Neural Error: Both Groq Cloud and Ollama failed. Details: {fallback_error}]"
+# Add to llm_router.py
+from typing import Generator
+
+def stream_llm_tokens(messages: list) -> Generator[str, None, None]:
+    """Streams LLM tokens chunk-by-chunk with transparent failover."""
+    init_groq()
+    
+    # 1. Attempt Groq Streaming
+    if groq_client and ACTIVE_GROQ_MODEL:
+        try:
+            stream = groq_client.chat.completions.create(
+                model=ACTIVE_GROQ_MODEL,
+                messages=messages,
+                temperature=0.7,
+                stream=True
+            )
+            for chunk in stream:
+                token = chunk.choices[0].delta.content or ""
+                if token:
+                    yield token
+            return
+        except Exception as e:
+            logger.warning(f"Groq Cloud streaming failed: {e}. Falling back to Ollama streaming...")
+
+    # 2. Attempt Ollama Streaming Fallback
+    try:
+        stream = ollama_client.chat.completions.create(
+            model=OLLAMA_MODEL,
+            messages=messages,
+            temperature=0.7,
+            stream=True
+        )
+        for chunk in stream:
+            token = chunk.choices[0].delta.content or ""
+            if token:
+                yield token
+    except Exception as fallback_error:
+        logger.error(f"All streaming engines failed: {fallback_error}")
+        yield f"[Error: Inference streaming unavailable ({fallback_error})]"

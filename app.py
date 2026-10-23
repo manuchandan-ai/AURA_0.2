@@ -334,49 +334,45 @@ def render_aura_voice_core(token, username, height=520):
 
     if (SpeechRec) {
       recognition = new SpeechRec();
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.continuous = true;      // Keep mic open like Jarvis/Alexa
+      recognition.interimResults = true;  // Read words as they are spoken
       recognition.lang = 'en-US';
+
+      let silenceTimer = null;
 
       recognition.onstart = () => {
         if (!isSpeaking && !isProcessing) {
-          setStatus('listening', '● VOICE ACTIVATED (SPEAK FREELY)');
+          setStatus('listening', '● AURA LISTENING (SPEAK FREELY)');
         }
       };
 
       recognition.onresult = async (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (!transcript.trim()) return;
-
-        isProcessing = true;
-        setStatus('thinking', `● THINKING: "${transcript.substring(0, 30)}..."`);
-        addLog('user', transcript);
-
-        try {
-          const res = await fetch(`${API_URL}/aura/directive`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bearer " + TOKEN
-            },
-            body: JSON.stringify({ transcript: transcript })
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            addLog('aura', data.response_text);
-            speakResponse(data.response_text);
+        // Clear the send timer every time a new word is detected
+        clearTimeout(silenceTimer);
+        
+        let interim = "";
+        let finalTxt = "";
+        
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTxt += event.results[i][0].transcript;
           } else {
-            const err = await res.json();
-            addLog('aura', "Directive processing error: " + (err.detail || "Refused."));
-            isProcessing = false;
-            startListening();
+            interim += event.results[i][0].transcript;
           }
-        } catch(err) {
-          addLog('aura', "Neural Engine unreachable on port 8000.");
-          isProcessing = false;
-          startListening();
         }
+
+        const currentSpeech = finalTxt || interim;
+        if (currentSpeech.trim()) {
+           setStatus('thinking', `● HEARING: "${currentSpeech}..."`);
+           cmdInput.value = currentSpeech;
+        }
+
+        // JARVIS BEHAVIOR: Wait for 1.5 seconds of silence, then auto-send
+        silenceTimer = setTimeout(() => {
+          if (cmdInput.value.trim() && !isProcessing) {
+            sendManual(); 
+          }
+        }, 1500);
       };
 
       recognition.onerror = (e) => {
@@ -386,6 +382,7 @@ def render_aura_voice_core(token, username, height=520):
       };
 
       recognition.onend = () => {
+        // Auto-restart mic immediately if hands-free mode is active
         if (isHandsFree && !isSpeaking && !isProcessing) {
           setTimeout(startListening, 300);
         }
@@ -551,7 +548,6 @@ if not st.session_state.token:
                 if st.form_submit_button("Authenticate Operator ➔", use_container_width=True):
                     try:
                         res = requests.post(f"{API_URL}/auth/login", json={"username": uname.strip(), "password": pwd.strip()})
-<<<<<<< HEAD
                         if res.status_code == 200:
                             data = res.json()
                             st.session_state.token = data["access_token"]
@@ -559,37 +555,6 @@ if not st.session_state.token:
                             st.rerun()
                         else:
                             st.error(res.json().get("detail", "Authentication rejected."))
-                    except Exception as e:
-                        st.error(f"Cannot reach server: {e}")
-
-        with tab_register:
-            with st.form("reg_form", clear_on_submit=True):
-                r_user = st.text_input("Username*")
-                r_pass = st.text_input("Password*", type="password")
-                r_email = st.text_input("Email")
-                r_phone = st.text_input("Phone Number")
-                r_addr = st.text_input("Station / Address")
-                r_bio = st.text_area("Technical Specialization")
-                r_pic = st.file_uploader("Upload Profile Image", type=["jpg", "png"])
-                if st.form_submit_button("Submit Registration for Approval ➔", use_container_width=True):
-                    if r_user and r_pass:
-                        files = {"avatar": (r_pic.name, r_pic.getvalue(), r_pic.type)} if r_pic else None
-                        data = {"username": r_user, "password": r_pass, "email": r_email, "phone": r_phone, "address": r_addr, "bio": r_bio}
-                        res = requests.post(f"{API_URL}/auth/register", data=data, files=files)
-=======
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
-                        if res.status_code == 200:
-                            data = res.json()
-                            st.session_state.token = data["access_token"]
-                            st.session_state.current_user = data
-                            st.session_state.banned_username = None
-                            st.rerun()
-                        else:
-                            detail = res.json().get("detail", "Authentication rejected.")
-                            st.error(detail)
-                            if "ACCOUNT_BANNED" in detail:
-                                st.session_state.banned_username = uname.strip()
-                                st.rerun()
                     except Exception as e:
                         st.error(f"Cannot reach server: {e}")
 
@@ -778,14 +743,37 @@ elif st.session_state.nav_selection == "Assistant Chat":
         with st.chat_message("user"):
             st.markdown(user_in)
         with st.chat_message("assistant"):
-            endpoint = "/chat/artifact" if art_id else "/chat"
-            payload = {"message": user_in, "conversation_history": st.session_state.chat_msgs[:-1], "session_id": st.session_state.chat_session_id}
+            endpoint = "/chat/stream" if not art_id else "/chat/artifact"
+            payload = {
+                "message": user_in, 
+                "conversation_history": st.session_state.chat_msgs[:-1], 
+                "session_id": st.session_state.chat_session_id
+            }
             if art_id:
                 payload["artifact_id"] = art_id
-            res = requests.post(f"{API_URL}{endpoint}", json=payload, headers=get_headers())
-            reply = res.json().get("response", "Error")
-            st.markdown(reply)
-            st.session_state.chat_msgs.append({"role": "assistant", "content": reply})
+            
+            # Generator to parse Server-Sent Events (SSE) live
+            def parse_sse_stream():
+                res = requests.post(f"{API_URL}{endpoint}", json=payload, headers=get_headers(), stream=True)
+                for line in res.iter_lines():
+                    if line:
+                        decoded = line.decode('utf-8')
+                        if decoded.startswith("data: "):
+                            content = decoded.replace("data: ", "").strip()
+                            if content == "[DONE]":
+                                break
+                            try:
+                                data = json.loads(content)
+                                yield data.get("token", "")
+                            except:
+                                pass
+            
+            # Write the stream dynamically to the UI
+            try:
+                full_reply = st.write_stream(parse_sse_stream())
+                st.session_state.chat_msgs.append({"role": "assistant", "content": full_reply})
+            except Exception as e:
+                st.error("Streaming connection failed. Ensure the backend is running on port 8000.")
 
 # ----------------- VIEW 3: GOALS & STREAKS -----------------
 elif st.session_state.nav_selection == "Goals & Streaks":
@@ -905,16 +893,12 @@ elif st.session_state.nav_selection == "Artifact Analysis":
         st.success("Artifact ingested and indexed.")
         st.rerun()
 
-<<<<<<< HEAD
 # ----------------- VIEW 7: MEMORY VAULT -----------------
 elif st.session_state.nav_selection == "Memory Vault":
     st.markdown("### 🧠 Cognitive Knowledge Vault")
     st.info("Extracted constraints, traits, and facts are injected into system prompts during reasoning.")
 
 # ----------------- VIEW 8: ADMIN CONSOLE -----------------
-=======
-# ----------------- VIEW 7: ADMIN CONSOLE -----------------
->>>>>>> 3cf5d74 (chore: update documentation, backend logic, and frontend configuration files)
 elif st.session_state.nav_selection == "Admin Console":
     st.markdown("### 🛡️ Administrative Governance & Operator Desk")
     tab_pend, tab_all, tab_app = st.tabs(["⏳ Pending Approvals", "👥 Operator Directory & Bans", "📬 Banned Appeals"])

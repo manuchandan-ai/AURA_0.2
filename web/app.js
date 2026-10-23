@@ -30,6 +30,48 @@ function getHeaders() {
   } : { "Content-Type": "application/json" };
 }
 
+function isTokenExpired(token) {
+  if (!token) return true;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(atob(parts[1]));
+    if (!payload.exp) return false;
+    return (Date.now() / 1000) >= (payload.exp - 30);
+  } catch (e) {
+    return false;
+  }
+}
+
+async function fetchWithAuth(url, options = {}) {
+  if (state.token && isTokenExpired(state.token)) {
+    console.warn("Proactive token expiration detected.");
+    logoutUser();
+    alert("Your session has timed out. Please log in to continue.");
+    throw new Error("Session expired");
+  }
+
+  const isFormData = options.body instanceof FormData;
+  const authHeaders = getHeaders();
+  if (isFormData) {
+    delete authHeaders["Content-Type"];
+  }
+
+  options.headers = {
+    ...authHeaders,
+    ...(options.headers || {})
+  };
+
+  const response = await fetch(url, options);
+  if (response.status === 401) {
+    console.warn("401 Unauthorized encountered from backend.");
+    logoutUser();
+    alert("Session expired or unauthorized. Please log in again.");
+    throw new Error("Unauthorized");
+  }
+  return response;
+}
+
 function refreshIcons() {
   if (window.lucide) lucide.createIcons();
 }
@@ -582,7 +624,7 @@ function toggleJarvisVoiceHome() {
 }
 
 // =============================================================================
-// 3. HUMAN VOICE ENGINE (ROBUST PERMISSION + TURN-TAKING)
+// 3. HUMAN VOICE ENGINE & WEB AUDIO VISUALIZER (JARVIS EXPERIENCE)
 // =============================================================================
 let recognition = null;
 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -602,6 +644,164 @@ function setAiStatus(status, text) {
     status === 'speaking' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
     'bg-teal-500/10 text-teal-400 border-teal-500/20'
   }`;
+}
+
+// --- Web Audio API Visualizer for Arc Reactor & Chat Waves ---
+let audioCtx = null;
+let analyser = null;
+let micStream = null;
+let animFrameId = null;
+
+function getAudioContext() {
+  if (!audioCtx) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (AudioContextClass) audioCtx = new AudioContextClass();
+  }
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function startAudioVisualizer(stream) {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 64;
+    analyser.smoothingTimeConstant = 0.8;
+    const source = ctx.createMediaStreamSource(stream);
+    source.connect(analyser);
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const homeBars = document.querySelectorAll("#home-orb-soundwave span");
+    const chatBars = document.querySelectorAll("#voice-wave-container .wave-bar");
+
+    const updateBars = () => {
+      if (!state.isListening && !state.isSpeaking) {
+        homeBars.forEach(b => b.style.transform = "scaleY(1)");
+        chatBars.forEach(b => b.style.transform = "scaleY(1)");
+        return;
+      }
+      analyser.getByteFrequencyData(dataArray);
+
+      homeBars.forEach((bar, idx) => {
+        const val = dataArray[idx % dataArray.length] / 255;
+        const barScale = Math.max(0.6, Math.min(3.2, 0.7 + val * 2.5));
+        bar.style.transform = `scaleY(${barScale})`;
+      });
+
+      chatBars.forEach((bar, idx) => {
+        const val = dataArray[idx % dataArray.length] / 255;
+        const barScale = Math.max(0.5, Math.min(3.0, 0.6 + val * 2.4));
+        bar.style.transform = `scaleY(${barScale})`;
+      });
+
+      animFrameId = requestAnimationFrame(updateBars);
+    };
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    animFrameId = requestAnimationFrame(updateBars);
+  } catch (e) {
+    console.warn("Visualizer init notice:", e);
+  }
+}
+
+let simulatedPulseInterval = null;
+function startSimulatedSpeechPulse() {
+  stopSimulatedSpeechPulse();
+  const homeBars = document.querySelectorAll("#home-orb-soundwave span");
+  const chatBars = document.querySelectorAll("#voice-wave-container .wave-bar");
+  simulatedPulseInterval = setInterval(() => {
+    if (!state.isSpeaking) {
+      stopSimulatedSpeechPulse();
+      return;
+    }
+    homeBars.forEach(b => {
+      b.style.transform = `scaleY(${0.7 + Math.random() * 2.2})`;
+    });
+    chatBars.forEach(b => {
+      b.style.transform = `scaleY(${0.6 + Math.random() * 2.0})`;
+    });
+  }, 110);
+}
+
+function stopSimulatedSpeechPulse() {
+  if (simulatedPulseInterval) {
+    clearInterval(simulatedPulseInterval);
+    simulatedPulseInterval = null;
+  }
+  const homeBars = document.querySelectorAll("#home-orb-soundwave span");
+  const chatBars = document.querySelectorAll("#voice-wave-container .wave-bar");
+  homeBars.forEach(b => b.style.transform = "scaleY(1)");
+  chatBars.forEach(b => b.style.transform = "scaleY(1)");
+}
+
+// --- Sentence-Boundary Low-Latency Speech Synthesis Engine ---
+let speechQueue = [];
+let isProcessingSpeechQueue = false;
+
+function queueSpeechSentence(sentence) {
+  if (!('speechSynthesis' in window)) return;
+  const clean = sentence
+    .replace(/[*#`_\[\]()]/g, "")
+    .replace(/\(Engine:[^)]*\)/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .trim();
+  if (!clean) return;
+
+  speechQueue.push(clean);
+  if (!isProcessingSpeechQueue) {
+    processNextSpeech();
+  }
+}
+
+function processNextSpeech() {
+  if (!speechQueue.length) {
+    isProcessingSpeechQueue = false;
+    state.isSpeaking = false;
+    setAiStatus("ready", "AURA Ready");
+    stopSimulatedSpeechPulse();
+    return;
+  }
+
+  isProcessingSpeechQueue = true;
+  state.isSpeaking = true;
+  setAiStatus("speaking", "AURA Speaking...");
+  startSimulatedSpeechPulse();
+
+  const textToSpeak = speechQueue.shift();
+  const utter = new SpeechSynthesisUtterance(textToSpeak);
+  utter.pitch = 1.0;
+  utter.rate = 1.05;
+
+  const voices = window.speechSynthesis.getVoices();
+  const naturalVoice = voices.find(v => (v.lang.includes("en-US") || v.lang.includes("en-GB")) && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha")));
+  if (naturalVoice) utter.voice = naturalVoice;
+
+  utter.onend = () => {
+    processNextSpeech();
+  };
+  utter.onerror = () => {
+    processNextSpeech();
+  };
+
+  window.speechSynthesis.speak(utter);
+}
+
+function stopAllSpeech() {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  speechQueue = [];
+  isProcessingSpeechQueue = false;
+  state.isSpeaking = false;
+  stopSimulatedSpeechPulse();
+}
+
+function speakText(text) {
+  stopListening();
+  stopAllSpeech();
+  queueSpeechSentence(text);
 }
 
 async function initSpeechRecognition() {
@@ -649,16 +849,14 @@ async function initSpeechRecognition() {
 }
 
 async function startListening() {
-  if (state.isSpeaking) return;
-  window.speechSynthesis.cancel();
+  if (state.isSpeaking) stopAllSpeech();
+  stopAllSpeech();
 
-  // 1. Explicitly prompt user for mic permission if needed
   try {
-    if (!state.micPermissionGranted) {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
-      state.micPermissionGranted = true;
-    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStream = stream;
+    state.micPermissionGranted = true;
+    startAudioVisualizer(stream);
   } catch (err) {
     alert("Microphone access is required for voice chat. Please allow microphone access in your browser.");
     stopListening();
@@ -679,7 +877,14 @@ function stopListening() {
   state.isListening = false;
   voiceWave.classList.add("hidden");
   micBtn.classList.remove("bg-teal-500/30", "text-teal-300");
-  if (!state.isSpeaking) setAiStatus("ready", "AURA Ready");
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+  if (!state.isSpeaking) {
+    setAiStatus("ready", "AURA Ready");
+    stopSimulatedSpeechPulse();
+  }
   if (recognition) {
     try { recognition.abort(); } catch (err) {}
   }
@@ -706,45 +911,8 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-// Human-Calibrated Voice Output
-function speakText(text) {
-  if (!('speechSynthesis' in window)) return;
-  
-  // Strictly disable mic while speaking to eliminate feedback loop
-  stopListening();
-  window.speechSynthesis.cancel();
-
-  state.isSpeaking = true;
-  setAiStatus("speaking", "AURA Speaking...");
-
-  const cleanSpeech = text
-    .replace(/[*#`_\[\]()]/g, "")
-    .replace(/\(Engine:[^)]*\)/g, "")
-    .replace(/https?:\/\/\S+/g, "")
-    .trim();
-
-  const utter = new SpeechSynthesisUtterance(cleanSpeech);
-  utter.pitch = 1.0;
-  utter.rate = 1.05;
-
-  const voices = window.speechSynthesis.getVoices();
-  const naturalVoice = voices.find(v => (v.lang.includes("en-US") || v.lang.includes("en-GB")) && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha")));
-  if (naturalVoice) utter.voice = naturalVoice;
-
-  utter.onend = () => {
-    state.isSpeaking = false;
-    setAiStatus("ready", "AURA Ready");
-  };
-  utter.onerror = () => {
-    state.isSpeaking = false;
-    setAiStatus("ready", "AURA Ready");
-  };
-
-  window.speechSynthesis.speak(utter);
-}
-
 // =============================================================================
-// 4. CONVERSATION STREAM & SENDING
+// 4. CONVERSATION STREAM & SENDING (REAL-TIME SSE & TOKEN RENDERING)
 // =============================================================================
 const chatMessagesContainer = document.getElementById("chat-messages");
 const chatInput = document.getElementById("chat-input");
@@ -791,26 +959,58 @@ function renderMessage(role, text) {
   refreshIcons();
 }
 
+function createStreamingMessageBubble() {
+  const div = document.createElement("div");
+  div.className = "chat-bubble flex gap-3.5 max-w-2xl aura";
+  div.innerHTML = `
+    <div class="w-7 h-7 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0 mt-0.5">
+      <i data-lucide="sparkles" class="w-3.5 h-3.5 text-teal-400"></i>
+    </div>
+    <div class="bubble-content bg-surface-100/90 border border-surface-border text-slate-200 rounded-2xl rounded-tl-sm p-4 text-sm leading-relaxed shadow-sm">
+      <span class="stream-text"></span><span class="inline-block w-1.5 h-4 ml-0.5 bg-teal-400 animate-pulse cursor-indicator"></span>
+    </div>
+  `;
+  chatMessagesContainer.appendChild(div);
+  chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+  refreshIcons();
+
+  const textEl = div.querySelector(".stream-text");
+  const cursorEl = div.querySelector(".cursor-indicator");
+
+  return {
+    appendToken(token) {
+      textEl.innerText += token;
+      chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    },
+    finalize(fullText) {
+      if (cursorEl) cursorEl.remove();
+      if (fullText) {
+        textEl.innerHTML = fullText.replace(/\n/g, "<br>");
+      }
+      chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+      refreshIcons();
+    }
+  };
+}
+
 async function sendUserMessage(msgText) {
   const text = (msgText || chatInput.value).trim();
   if (!text && !state.selectedFile) return;
 
   chatInput.value = "";
   renderMessage("user", text || `Uploaded file: ${state.selectedFile.name}`);
+  stopAllSpeech();
 
   setAiStatus("thinking", "Thinking...");
 
   try {
-    let responseText = "";
-
     if (state.selectedFile) {
       const formData = new FormData();
       formData.append("file", state.selectedFile);
       formData.append("prompt", text || "Analyze this file with human clarity.");
 
-      const uploadRes = await fetch(`${API_URL}/artifacts/upload`, {
+      const uploadRes = await fetchWithAuth(`${API_URL}/artifacts/upload`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${state.token}` },
         body: formData
       });
       const uploadData = await uploadRes.json();
@@ -818,21 +1018,86 @@ async function sendUserMessage(msgText) {
       fileLabel.innerText = "";
       fileInput.value = "";
 
-      responseText = uploadData.analysis || "File ingested successfully.";
+      const responseText = uploadData.analysis || "File ingested successfully.";
+      renderMessage("aura", responseText);
+      speakText(responseText);
+      loadChatHistory();
     } else {
-      const res = await fetch(`${API_URL}/aura/directive`, {
+      // Real-Time SSE Token Stream
+      const bubble = createStreamingMessageBubble();
+      const res = await fetchWithAuth(`${API_URL}/chat/stream`, {
         method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify({ transcript: text })
+        body: JSON.stringify({
+          message: text,
+          session_id: state.sessionId
+        })
       });
-      const data = await res.json();
-      responseText = data.response_text || "I'm with you, but I couldn't reach the neural core.";
-    }
 
-    renderMessage("aura", responseText);
-    speakText(responseText);
-    loadChatHistory();
+      if (!res.ok) {
+        throw new Error(`Stream request failed: ${res.statusText}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let streamBuffer = "";
+      let speechBuffer = "";
+      let fullAccumulatedText = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        streamBuffer += decoder.decode(value, { stream: true });
+        const lines = streamBuffer.split("\n\n");
+        streamBuffer = lines.pop() || "";
+
+        for (const block of lines) {
+          const trimmed = block.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const jsonStr = trimmed.slice(5).trim();
+          try {
+            const data = JSON.parse(jsonStr);
+            if (data.type === "init") {
+              if (data.session_id) {
+                state.sessionId = data.session_id;
+                localStorage.setItem("aura_session_id", state.sessionId);
+              }
+            } else if (data.type === "token") {
+              const token = data.token;
+              bubble.appendToken(token);
+              fullAccumulatedText += token;
+              speechBuffer += token;
+
+              // Sentence-boundary low-latency audio synthesis
+              const match = speechBuffer.match(/^([\s\S]+?[.!?\n]+)([\s\S]*)$/);
+              if (match) {
+                const sentence = match[1];
+                speechBuffer = match[2];
+                queueSpeechSentence(sentence);
+              }
+            } else if (data.type === "done") {
+              if (data.session_id) {
+                state.sessionId = data.session_id;
+                localStorage.setItem("aura_session_id", state.sessionId);
+              }
+              if (data.full_response) {
+                fullAccumulatedText = data.full_response;
+              }
+            }
+          } catch (e) {
+            console.warn("Parse stream chunk error:", e);
+          }
+        }
+      }
+
+      bubble.finalize(fullAccumulatedText);
+      if (speechBuffer.trim()) {
+        queueSpeechSentence(speechBuffer.trim());
+      }
+      loadChatHistory();
+    }
   } catch (err) {
+    console.error("sendUserMessage error:", err);
     renderMessage("aura", "Sorry, I had trouble connecting to the core engine just now.");
     setAiStatus("ready", "AURA Ready");
   }
@@ -867,7 +1132,7 @@ document.getElementById("btn-new-chat").onclick = startNewChat;
 async function loadChatHistory() {
   if (!state.token) return;
   try {
-    const res = await fetch(`${API_URL}/chat/history`, { headers: getHeaders() });
+    const res = await fetchWithAuth(`${API_URL}/chat/history`);
     if (res.ok) {
       const data = await res.json();
       const list = document.getElementById("sidebar-history-list");
@@ -937,9 +1202,8 @@ document.addEventListener("click", () => {
 async function deleteChatSession(sessionId) {
   if (!confirm("Are you sure you want to delete this chat session?")) return;
   try {
-    const res = await fetch(`${API_URL}/chat/session/${sessionId}`, {
-      method: "DELETE",
-      headers: getHeaders()
+    const res = await fetchWithAuth(`${API_URL}/chat/session/${sessionId}`, {
+      method: "DELETE"
     });
     if (res.ok) {
       if (state.sessionId === sessionId) {
@@ -975,7 +1239,7 @@ const homeTasksContainer = document.getElementById("home-tasks-container");
 async function loadDashboard() {
   if (!state.token) return;
   try {
-    const res = await fetch(`${API_URL}/dashboard/summary`, { headers: getHeaders() });
+    const res = await fetchWithAuth(`${API_URL}/dashboard/summary`);
     if (res.ok) {
       const data = await res.json();
       const goals = data.goals || [];
@@ -1008,7 +1272,7 @@ async function loadDashboard() {
       renderHomeTasks(reminders);
     }
 
-    const fzRes = await fetch(`${API_URL}/goals/freeze-status`, { headers: getHeaders() });
+    const fzRes = await fetchWithAuth(`${API_URL}/goals/freeze-status`);
     if (fzRes.ok) {
       const fz = await fzRes.json();
       const sCount = fz.freeze_tokens || 0;
@@ -1309,9 +1573,8 @@ function renderGoals(goals) {
 
 async function checkinGoal(goalId) {
   try {
-    const res = await fetch(`${API_URL}/goals/${goalId}/checkin`, {
-      method: "POST",
-      headers: getHeaders()
+    const res = await fetchWithAuth(`${API_URL}/goals/${goalId}/checkin`, {
+      method: "POST"
     });
     if (res.ok) {
       loadDashboard();
@@ -1323,9 +1586,8 @@ async function checkinGoal(goalId) {
 async function deleteGoal(goalId) {
   if (!confirm("Are you sure you want to delete this goal?")) return;
   try {
-    const res = await fetch(`${API_URL}/goals/${goalId}`, {
-      method: "DELETE",
-      headers: getHeaders()
+    const res = await fetchWithAuth(`${API_URL}/goals/${goalId}`, {
+      method: "DELETE"
     });
     if (res.ok) {
       loadDashboard();
@@ -1359,12 +1621,11 @@ formNewGoal.onsubmit = async (e) => {
   const exp = document.getElementById("goal-exp").value;
 
   btnSubmitGoal.disabled = true;
-  btnSubmitGoal.innerText = "Crafting Roadmap with AI...";
+  btnSubmitGoal.innerHTML = `<span class="inline-block animate-spin mr-1.5">⚙️</span> Dispatching Goal Blueprint...`;
 
   try {
-    const res = await fetch(`${API_URL}/goals`, {
+    const res = await fetchWithAuth(`${API_URL}/goals`, {
       method: "POST",
-      headers: getHeaders(),
       body: JSON.stringify({
         intention: intent,
         category: cat,
@@ -1372,15 +1633,71 @@ formNewGoal.onsubmit = async (e) => {
         experience: exp
       })
     });
+    
     if (res.ok) {
-      closeGoalModal();
-      formNewGoal.reset();
-      loadDashboard();
-      speakText(`New goal established. I have generated your strategic roadmap and daily tasks!`);
+      const data = await res.json();
+      if (data.job_id) {
+        btnSubmitGoal.innerHTML = `<span class="inline-block animate-pulse mr-1.5">🧠</span> Synthesizing Roadmap in Background...`;
+        
+        let attempts = 0;
+        const maxAttempts = 35;
+        const pollJob = async () => {
+          try {
+            const pollRes = await fetchWithAuth(`${API_URL}/goals/jobs/${data.job_id}`);
+            if (pollRes.ok) {
+              const pollData = await pollRes.json();
+              if (pollData.status === "ready") {
+                closeGoalModal();
+                formNewGoal.reset();
+                loadDashboard();
+                speakText("New goal established. Your strategic roadmap and daily tasks are ready!");
+                btnSubmitGoal.disabled = false;
+                btnSubmitGoal.innerText = "Generate AI Roadmap ➔";
+                return;
+              } else if (pollData.status === "failed") {
+                closeGoalModal();
+                formNewGoal.reset();
+                loadDashboard();
+                speakText("Goal registered with fallback milestones.");
+                btnSubmitGoal.disabled = false;
+                btnSubmitGoal.innerText = "Generate AI Roadmap ➔";
+                return;
+              }
+            }
+          } catch (pollErr) {
+            console.warn("Polling error:", pollErr);
+          }
+
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(pollJob, 1200);
+          } else {
+            closeGoalModal();
+            formNewGoal.reset();
+            loadDashboard();
+            btnSubmitGoal.disabled = false;
+            btnSubmitGoal.innerText = "Generate AI Roadmap ➔";
+          }
+        };
+
+        setTimeout(pollJob, 1000);
+        return;
+      } else {
+        closeGoalModal();
+        formNewGoal.reset();
+        loadDashboard();
+        speakText(`New goal established.`);
+      }
+    } else {
+      alert("Failed to initialize goal. Please check input parameters.");
     }
-  } catch (err) {} finally {
-    btnSubmitGoal.disabled = false;
-    btnSubmitGoal.innerText = "Generate AI Roadmap ➔";
+  } catch (err) {
+    console.error("Goal submission error:", err);
+    alert("Connection error while creating goal.");
+  } finally {
+    if (!btnSubmitGoal.disabled) {
+      btnSubmitGoal.innerText = "Generate AI Roadmap ➔";
+    }
   }
 };
 
@@ -1442,9 +1759,8 @@ async function addNewTask() {
   
   input.value = "";
   try {
-    const res = await fetch(`${API_URL}/reminders`, {
+    const res = await fetchWithAuth(`${API_URL}/reminders`, {
       method: "POST",
-      headers: getHeaders(),
       body: JSON.stringify({
         task_text: text,
         priority: "High",
@@ -1461,9 +1777,8 @@ async function addNewTask() {
 
 async function toggleReminder(reminderId) {
   try {
-    const res = await fetch(`${API_URL}/reminders/${reminderId}/toggle`, {
-      method: "POST",
-      headers: getHeaders()
+    const res = await fetchWithAuth(`${API_URL}/reminders/${reminderId}/toggle`, {
+      method: "POST"
     });
     if (res.ok) {
       const data = await res.json();
@@ -1478,9 +1793,8 @@ async function toggleReminder(reminderId) {
 async function deleteReminder(reminderId) {
   if (!confirm("Are you sure you want to delete this directive?")) return;
   try {
-    const res = await fetch(`${API_URL}/reminders/${reminderId}`, {
-      method: "DELETE",
-      headers: getHeaders()
+    const res = await fetchWithAuth(`${API_URL}/reminders/${reminderId}`, {
+      method: "DELETE"
     });
     if (res.ok) {
       loadDashboard();
@@ -1565,7 +1879,7 @@ const vaultFileInput = document.getElementById("vault-file-input");
 async function loadArtifacts() {
   if (!state.token) return;
   try {
-    const res = await fetch(`${API_URL}/artifacts`, { headers: getHeaders() });
+    const res = await fetchWithAuth(`${API_URL}/artifacts`);
     if (res.ok) {
       const data = await res.json();
       if (!data.artifacts || !data.artifacts.length) {
@@ -1598,9 +1912,8 @@ if (vaultFileInput) {
     formData.append("prompt", "Analyze and summarize this artifact.");
 
     try {
-      await fetch(`${API_URL}/artifacts/upload`, {
+      await fetchWithAuth(`${API_URL}/artifacts/upload`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${state.token}` },
         body: formData
       });
       loadArtifacts();
@@ -1612,7 +1925,7 @@ if (vaultFileInput) {
 // Audio Briefing Player
 document.getElementById("btn-play-briefing").onclick = async () => {
   try {
-    const res = await fetch(`${API_URL}/briefing/listen`, { headers: getHeaders() });
+    const res = await fetchWithAuth(`${API_URL}/briefing/listen`);
     if (res.ok) {
       const blob = await res.blob();
       const audio = new Audio(URL.createObjectURL(blob));
@@ -1633,7 +1946,7 @@ async function loadAdminData() {
 
   // 1. Load All Users
   try {
-    const res = await fetch(`${API_URL}/admin/users`, { headers: getHeaders() });
+    const res = await fetchWithAuth(`${API_URL}/admin/users`);
     if (res.ok) {
       const data = await res.json();
       renderAdminUsers(data.users || []);
@@ -1642,7 +1955,7 @@ async function loadAdminData() {
 
   // 2. Load Pending Operators
   try {
-    const pRes = await fetch(`${API_URL}/admin/pending-operators`, { headers: getHeaders() });
+    const pRes = await fetchWithAuth(`${API_URL}/admin/pending-operators`);
     if (pRes.ok) {
       const pData = await pRes.json();
       renderAdminPending(pData.pending_operators || []);
@@ -1651,7 +1964,7 @@ async function loadAdminData() {
 
   // 3. Load Appeals
   try {
-    const aRes = await fetch(`${API_URL}/admin/appeals`, { headers: getHeaders() });
+    const aRes = await fetchWithAuth(`${API_URL}/admin/appeals`);
     if (aRes.ok) {
       const aData = await aRes.json();
       renderAdminAppeals(aData.appeals || []);
@@ -1799,9 +2112,8 @@ async function loadUserProfileView() {
   if (!state.token) return;
 
   try {
-    const res = await fetch(`${API_URL}/user/profile`, { headers: getHeaders() });
+    const res = await fetchWithAuth(`${API_URL}/user/profile`);
     if (!res.ok) {
-      if (res.status === 401) logoutUser();
       return;
     }
     const data = await res.json();
@@ -1938,9 +2250,8 @@ if (formProfileDetails) {
     profSaveStatus.className = "text-xs text-teal-400";
 
     try {
-      const res = await fetch(`${API_URL}/user/profile`, {
+      const res = await fetchWithAuth(`${API_URL}/user/profile`, {
         method: "PUT",
-        headers: getHeaders(),
         body: JSON.stringify(payload)
       });
       const data = await res.json();
@@ -1986,9 +2297,8 @@ if (formChangePassword) {
     pwdStatusMsg.innerText = "Updating password cipher...";
 
     try {
-      const res = await fetch(`${API_URL}/user/profile`, {
+      const res = await fetchWithAuth(`${API_URL}/user/profile`, {
         method: "PUT",
-        headers: getHeaders(),
         body: JSON.stringify({
           current_password: currentPassword,
           new_password: newPassword
@@ -2030,9 +2340,8 @@ if (profilePhotoFileInput) {
     }
 
     try {
-      const res = await fetch(`${API_URL}/user/profile-photo`, {
+      const res = await fetchWithAuth(`${API_URL}/user/profile-photo`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${state.token}` },
         body: fd
       });
       const data = await res.json();
@@ -2065,5 +2374,82 @@ if (profilePhotoFileInput) {
 // INITIAL BOOT
 // =============================================================================
 applySidebarState();
+if (state.token && isTokenExpired(state.token)) {
+  console.warn("Stored token is expired on boot.");
+  localStorage.removeItem("aura_token");
+  localStorage.removeItem("aura_user");
+  state.token = null;
+  state.user = null;
+}
 showLanding();
 refreshIcons();
+
+// Speech Synthesis Streaming Buffer
+let speechBuffer = "";
+const synth = window.speechSynthesis;
+
+function speakChunk(text) {
+  if (!synth) return;
+  const clean = text.replace(/[*#`_\[\]()]/g, "").trim();
+  if (!clean) return;
+  
+  const utter = new SpeechSynthesisUtterance(clean);
+  utter.rate = 1.05;
+  utter.pitch = 0.95;
+  synth.speak(utter);
+}
+
+// In your SSE Stream Reader:
+async function streamChatResponse(userPrompt, token) {
+  const response = await fetch("http://127.0.0.1:8000/chat/stream", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ message: userPrompt })
+  });
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let fullResponse = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n\n");
+
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const payloadStr = line.replace("data: ", "").trim();
+        if (payloadStr === "[DONE]") {
+          if (speechBuffer.trim()) {
+            speakChunk(speechBuffer);
+            speechBuffer = "";
+          }
+          break;
+        }
+
+        try {
+          const parsed = JSON.parse(payloadStr);
+          const tokenText = parsed.token;
+          fullResponse += tokenText;
+          speechBuffer += tokenText;
+
+          // Speak naturally at sentence boundaries
+          if (/[.!?\n]/.test(tokenText) && speechBuffer.length > 25) {
+            speakChunk(speechBuffer);
+            speechBuffer = "";
+          }
+
+          // Update chat UI element live
+          document.getElementById("chat-stream-target").innerText = fullResponse;
+        } catch (e) {
+          // Keep parsing
+        }
+      }
+    }
+  }
+}
